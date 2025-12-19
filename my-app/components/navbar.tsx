@@ -18,7 +18,7 @@ export default function Navbar() {
 
       if (!data?.profile?.first_name) {
         alert("Not authenticated. Please log in");
-        router.push("/signup");
+        router.push("/auth/login");
         return;
       }
 
