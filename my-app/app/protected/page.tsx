@@ -1,3 +1,7 @@
+export default function Protected () {
+  return <div>Protected</div>
+}
+ 
 // import { redirect } from "next/navigation";
 
 // import { createClient } from "@/lib/supabase/server";
