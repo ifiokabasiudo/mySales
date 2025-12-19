@@ -1,3 +1,7 @@
+export default function ProtectedLauout () {
+  return <div>Protected Layout</div>
+}
+
 // import { DeployButton } from "@/components/deploy-button";
 // import { EnvVarWarning } from "@/components/env-var-warning";
 // import { AuthButton } from "@/components/auth-button";
