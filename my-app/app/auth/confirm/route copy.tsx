@@ -28,3 +28,7 @@
 //   // redirect the user to an error page with some instructions
 //   redirect(`/auth/error?error=No token hash or type`);
 // }
+
+export default function RouteStuffs () {
+    return <div>Route Stuffs</div>
+}
