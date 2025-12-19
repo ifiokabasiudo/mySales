@@ -1,0 +1,104 @@
+// lib/db.ts
+import Dexie from "dexie";
+
+export type QuickSale = {
+  id: string;
+  phone?: string;
+  auth_user_id?: string | null;
+  total_amount: number;
+  reconciled_amount: number;
+  status: "pending" | "partial" | "completed";
+  note: string | null;
+  mode: string;
+  soft_deleted?: boolean;
+  deleted_reason?: string | null;
+  deleted_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InventoryItem = {
+  id: string;
+  phone: string;
+  auth_user_id?: string | null;
+//   item_code?: string | null;
+  name: string;
+  stock_quantity: number;
+  unit_price: number;
+  soft_deleted?: boolean;
+  deleted_reason?: string | null;
+  deleted_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type InventorySale = {
+  id: string;
+  phone?: string;
+  auth_user_id?: string | null;
+  item_id: string; // references inventory_items.id
+  name: string;
+  quantity: number;
+  selling_price: number;
+  total_amount: number;
+  payment_type: string;
+  soft_deleted?: boolean;
+  deleted_reason?: string | null;
+  deleted_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type ReconciliationLink = {
+  id: string;
+  phone?: string;
+  auth_user_id?: string | null;
+  quick_sales_id: string;
+  inventory_sales_id: string;
+  linked_amount: number; // can be negative for reversal
+//   is_reversal?: boolean;
+//   reversal_of?: string | null;
+  created_by?: string | null;
+  soft_deleted?: boolean;
+  deleted_reason?: string | null;
+  deleted_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PendingSync = {
+  local_id?: number; // Dexie auto-increment key
+  table: "quick_sales" | "inventory_items" | "inventory_sales" | "reconciliation_links";
+  action: "insert" | "update" | "soft_delete" | "hard_delete";
+  payload: any; // full row data (including local ids)
+  created_at?: string;
+  tries?: number;
+  last_error?: string | null;
+};
+
+class MySalesDB extends Dexie {
+  quick_sales!: Dexie.Table<QuickSale, string>;
+  inventory_items!: Dexie.Table<InventoryItem, string>;
+  inventory_sales!: Dexie.Table<InventorySale, string>;
+  reconciliation_links!: Dexie.Table<ReconciliationLink, string>;
+  pending_sync!: Dexie.Table<PendingSync, number>;
+
+  constructor() {
+    super("mySalesDB");
+    this.version(1).stores({
+      quick_sales: "id, total_amount, reconciled_amount, status, created_at",
+      inventory_items: "id, name, stock_quantity, created_at",
+      inventory_sales: "id, item_id, created_at",
+      reconciliation_links: "id, quick_sales_id, inventory_sales_id, created_at",
+      pending_sync: "++local_id, table, action, created_at",
+    });
+
+    this.quick_sales = this.table("quick_sales");
+    this.inventory_items = this.table("inventory_items");
+    this.inventory_sales = this.table("inventory_sales");
+    this.reconciliation_links = this.table("reconciliation_links");
+    this.pending_sync = this.table("pending_sync");
+  }
+}
+
+export const db = new MySalesDB();
