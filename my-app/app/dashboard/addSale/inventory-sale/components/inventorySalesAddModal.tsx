@@ -1,12 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import SearchBar from "../../components/searchBar";
+import { BatchItems } from "@/app/inventory/constants/batch_items";
 
 type AddItemModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (item: { id: string; name: string; selling_price: number; payment_type: string; quantity: number }) => void;
+  onAdd: (item: {
+    id: string;
+    name: string;
+    selling_price: number;
+    payment_type: string;
+    quantity: number;
+  }) => void;
+};
+
+type Batch = {
+  id: string;
+  item_id: string;
+  unit_cost: number;
+  quantity: number;
+  soft_deleted: boolean | undefined;
 };
 
 const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
@@ -20,7 +35,10 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
   const [searchValue, setSearchValue] = useState("");
   const [searchId, setSearchId] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [batch, setBatch] = useState<Batch | null>(null);
   const options = ["Cash", "POS", "Transfer"];
+
+  const items = BatchItems();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,8 +47,15 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
     if (tAmount < 0) return alert("Amount cannot be negative");
     const tQuantity = parseFloat(quantity || "1");
     if (tQuantity < 0) return alert("Quantitiy cannot be negative");
+    if(batch?.quantity && tQuantity > batch?.quantity) return alert("Quantity is more than batch")
 
-    onAdd({ id: searchId, name: searchValue, selling_price: tAmount, payment_type: paymentType, quantity: tQuantity });
+    onAdd({
+      id: searchId,
+      name: searchValue,
+      selling_price: tAmount,
+      payment_type: paymentType,
+      quantity: tQuantity,  
+    });
 
     // reset form
     setQuantity("");
@@ -38,9 +63,21 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
     setSearchId("");
     setSearchValue("");
 
-
     onClose();
   };
+
+  useEffect(() => {
+    const batch = items.filter((item) => item.item_id == searchId && item.is_active)
+    .sort((a, b) => {
+      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return dateA - dateB;
+    }
+  );
+    setBatch(batch[0]);
+  }, [searchValue]);
+
+  console.log("The batch in the inventory sales", batch);
 
   if (!isOpen) return null;
 
@@ -57,10 +94,14 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
             setSearchId={setSearchId}
           />
 
+          {batch && <div className="flex justify-between text-sm text-gray-400">
+            <span>Cost Price: {batch.unit_cost}</span>
+            <span>•</span>
+            <span>Remaining: {batch.quantity - Number(quantity)}</span>
+            </div>}
+
           <div>
-            <label className="block mb-1 font-medium">
-              Price of each item
-            </label>
+            <label className="block mb-1 font-medium">Price of each item</label>
             <input
               type="number"
               className="w-full border border-gray-300 rounded px-3 py-2"
@@ -78,9 +119,7 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
           </div>
 
           <div>
-            <label className="block mb-1 font-medium">
-              Quantity
-            </label>
+            <label className="block mb-1 font-medium">Quantity</label>
             <input
               type="number"
               className="w-full border border-gray-300 rounded px-3 py-2"

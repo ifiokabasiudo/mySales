@@ -25,7 +25,7 @@ export default function EditModal({
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   data: InventorySales;
 }) {
-  const [name, setName] = useState(data.name);
+  // const [name, setName] = useState(data.name);
   const [quantity, setquantity] = useState(
     String(data.quantity)
   );
@@ -40,7 +40,7 @@ export default function EditModal({
     const price = parseFloat(sellingPrice || "0");
     const tQuantity = parseFloat(quantity || "0");
 
-    if (!name.trim()) return alert("Name is required");
+    // if (!name.trim()) return alert("Name is required");
     if (tQuantity < 0) return alert("Quantity cannot be negative");
     if (price < 0) return alert("Selling price cannot be negative");
 
@@ -66,7 +66,7 @@ export default function EditModal({
       id: data.id,
       // phone: sessionData.profile.phone,
       item_id: data.item_id,
-      name: name,
+      // name: name,
       quantity: tQuantity,
       selling_price: price,
       payment_type: paymentType,
@@ -84,7 +84,7 @@ export default function EditModal({
     alert("Item was saved offline, would sync when online!");
 
     // reset form
-    setName("");
+    // setName("");
     setquantity("0");
     setSellingPrice("0");
 
@@ -102,14 +102,14 @@ export default function EditModal({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
+          {/* <div>
             <label>Item Name</label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Item Name"
             />
-          </div>
+          </div> */}
 
           <div>
             <label>Quantity</label>

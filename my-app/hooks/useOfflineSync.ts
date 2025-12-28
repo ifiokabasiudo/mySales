@@ -19,6 +19,29 @@ export default function useOfflineSync() {
         const table = item.table;
         const payload = item.payload;
 
+        // 🔴 SPECIAL CASE: inventory_sales
+      // if (table === "inventory_sales") {
+      //   const clientSaleId = crypto.randomUUID();
+
+      //   const { error } = await supabase.rpc("create_inventory_sale", {
+      //     p_client_sale_id: clientSaleId,
+      //     p_item_id: payload.item_id,
+      //     p_name: payload.name,
+      //     p_quantity: payload.quantity,
+      //     p_selling_price: payload.selling_price,
+      //     p_phone: payload.phone,
+      //     p_payment_type: payload.payment_type
+      //     // p_auth_user_id: payload.auth_user_id,
+      //   });
+
+      //   if (error) throw error;
+
+      //   // sale already exists locally → server created its own row
+      //   // local row will be reconciled later if you want
+      //   await db.pending_sync.delete(item.local_id!);
+      //   return;
+      // }
+
         // mapping logic: if payload has local id and server will return an id, we need link update
         const { data, error } = await supabase.from(table).insert(payload).select().single();
 

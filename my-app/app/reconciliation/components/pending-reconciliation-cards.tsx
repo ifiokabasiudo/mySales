@@ -33,7 +33,7 @@ export default function PendingReconciliationCards() {
             <h1 className="text-black text-2xl font-bold">
               ₦{sale.total_amount - sale.reconciled_amount}
             </h1>
-            <p>{sale.status}</p>
+            <p>{sale?.status}</p>
           </div>
           <div className="flex justify-between">
             <p className="max-w-60">{sale?.note}</p>

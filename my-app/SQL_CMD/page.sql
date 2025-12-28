@@ -262,45 +262,45 @@ end;
 $$ language plpgsql;
 
 -- Deduct stock function
-create or replace function deduct_stock()
-returns trigger as $$
-declare
-  current_stock integer;
-begin
-  -- Lock and get current stock
-  select stock_quantity
-  into current_stock
-  from inventory_items
-  where id = new.item_id
-  for update;
+-- create or replace function deduct_stock()
+-- returns trigger as $$
+-- declare
+--   current_stock integer;
+-- begin
+--   -- Lock and get current stock
+--   select stock_quantity
+--   into current_stock
+--   from inventory_items
+--   where id = new.item_id
+--   for update;
 
-  -- Prevent negative stock
-  if current_stock < new.quantity then
-    raise exception 'Insufficient stock for item %', new.item_id;
-  end if;
+--   -- Prevent negative stock
+--   if current_stock < new.quantity then
+--     raise exception 'Insufficient stock for item %', new.item_id;
+--   end if;
 
-  -- Deduct stock safely
-  update inventory_items
-  set stock_quantity = stock_quantity - new.quantity
-  where id = new.item_id;
+--   -- Deduct stock safely
+--   update inventory_items
+--   set stock_quantity = stock_quantity - new.quantity
+--   where id = new.item_id;
 
-  return new;
-end;
-$$ language plpgsql;
+--   return new;
+-- end;
+-- $$ language plpgsql;
 
-create or replace function restore_stock()
-returns trigger as $$
-begin
-  -- Restore stock only if sale was not previously deleted
-  if old.soft_deleted = false and new.soft_deleted = true then
-    update inventory_items
-    set stock_quantity = stock_quantity + old.quantity
-    where id = old.item_id;
-  end if;
+-- create or replace function restore_stock()
+-- returns trigger as $$
+-- begin
+--   -- Restore stock only if sale was not previously deleted
+--   if old.soft_deleted = false and new.soft_deleted = true then
+--     update inventory_items
+--     set stock_quantity = stock_quantity + old.quantity
+--     where id = old.item_id;
+--   end if;
 
-  return new;
-end;
-$$ language plpgsql;
+--   return new;
+-- end;
+-- $$ language plpgsql;
 
 ---------------------------------------------------
 -- TRIGGERS
@@ -319,16 +319,16 @@ for each row
 execute function set_updated_at();
 
 -- Deduct stock on new sale
-create trigger deduct_stock_trigger
-after insert on inventory_sales
-for each row
-execute function deduct_stock();
+-- create trigger deduct_stock_trigger
+-- after insert on inventory_sales
+-- for each row
+-- execute function deduct_stock();
 
 -- Restore stock on sale deletion
-create trigger restore_stock_trigger
-after update on inventory_sales
-for each row
-execute function restore_stock();
+-- create trigger restore_stock_trigger
+-- after update on inventory_sales
+-- for each row
+-- execute function restore_stock();
 
 ---------------------------------------------------
 
@@ -406,4 +406,181 @@ create trigger set_inventory_updated_at
 before update on inventory_items
 for each row
 execute function set_updated_at();
+
+create table inventory_batches (
+  id uuid primary key default uuid_generate_v4(),
+
+  phone text,
+  auth_user_id uuid,
+
+  item_id uuid not null references inventory_items(id),
+
+  quantity integer not null check (quantity >= 0),
+  unit_cost numeric(16,2) not null,
+
+  is_active boolean default true,
+
+  soft_deleted boolean default false,
+  deleted_reason text,
+  deleted_at timestamp,
+
+  created_at timestamp default now(),
+  updated_at timestamp default now()
+);
+
+create trigger set_inventory_updated_at
+before update on inventory_batches
+for each row
+execute function set_updated_at();
+
+
+create or replace function recompute_inventory_item(item uuid)
+returns void as $$
+declare
+  total_stock integer;
+  display_price numeric(16,2);
+begin
+  -- total stock
+  select coalesce(sum(quantity), 0)
+  into total_stock
+  from inventory_batches
+  where item_id = item
+    and is_active = true
+    and soft_deleted = false;
+
+  -- display price (oldest active batch)
+  select unit_cost
+  into display_price
+  from inventory_batches
+  where item_id = item
+    and is_active = true
+    and soft_deleted = false
+  order by created_at asc
+  limit 1;
+
+  update inventory_items
+  set
+    stock_quantity = total_stock,
+    unit_price = coalesce(display_price, unit_price)
+  where id = item;
+end;
+$$ language plpgsql;
+
+
+create or replace function inventory_batch_changed()
+returns trigger as $$
+begin
+  perform recompute_inventory_item(new.item_id);
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger inventory_batch_changed_insert
+after insert on inventory_batches
+for each row execute function inventory_batch_changed();
+
+create trigger inventory_batch_changed_update
+after update on inventory_batches
+for each row execute function inventory_batch_changed();
+
+
+create or replace function public.apply_inventory_sale()
+returns trigger as $$
+declare
+  v_remaining integer := new.quantity;
+  v_take integer;
+  v_batch inventory_batches;
+begin
+  if new.quantity <= 0 then
+    raise exception 'Quantity must be greater than zero';
+  end if;
+
+  while v_remaining > 0 loop
+    -- FIFO: pick oldest active batch
+    select *
+    into v_batch
+    from inventory_batches
+    where item_id = new.item_id
+      and is_active = true
+      and soft_deleted = false
+    order by created_at asc
+    limit 1
+    for update;
+
+    if not found then
+      raise exception 'Insufficient stock for item %', new.item_id;
+    end if;
+
+    v_take := least(v_batch.quantity, v_remaining);
+
+    -- deduct from batch
+    update inventory_batches
+    set
+      quantity = quantity - v_take,
+      is_active = (quantity - v_take) > 0
+    where id = v_batch.id;
+
+    -- create per-batch sale row ONLY if batch_id not yet assigned
+    if new.batch_id is null then
+      update inventory_sales
+      set batch_id = v_batch.id
+      where id = new.id;
+    end if;
+
+    v_remaining := v_remaining - v_take;
+  end loop;
+
+  -- recompute item stock
+  perform recompute_inventory_item(new.item_id);
+
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_inventory_sale_insert on inventory_sales;
+
+create trigger trg_inventory_sale_insert
+after insert on inventory_sales
+for each row
+execute function public.apply_inventory_sale();
+
+
+
+-- create or replace function create_cogs_expense()
+-- returns trigger as $$
+-- declare
+--   v_cost numeric(16,2);
+-- begin
+--   select unit_cost
+--   into v_cost
+--   from inventory_batches
+--   where id = new.batch_id;
+
+--   insert into expenses (
+--     phone,
+--     inventory_sales_id,
+--     type,
+--     category,
+--     quantity,
+--     unit_cost,
+--     total_cost
+--   )
+--   values (
+--     new.phone,
+--     new.id,
+--     'cogs',
+--     'inventory',
+--     new.quantity,
+--     v_cost,
+--     new.quantity * v_cost
+--   );
+
+--   return new;
+-- end;
+-- $$ language plpgsql;
+
+-- create trigger trg_create_cogs_expense
+-- after insert on inventory_sales
+-- for each row
+-- execute function create_cogs_expense();
 

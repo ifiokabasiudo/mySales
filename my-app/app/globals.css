@@ -69,4 +69,8 @@ body {
   background: #555555;
 }
 
+.right {
+  right: 100% !important;
+}
+
 

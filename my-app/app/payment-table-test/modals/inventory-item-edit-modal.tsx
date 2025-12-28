@@ -8,13 +8,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { InventoryItems } from "../InventoryItemsColumns";
 import { offlineUpdate } from "@/lib/offline";
-import { getSession } from "@/lib/session";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import { db } from "@/lib/db";
-import Dexie from "dexie";
+import { BatchItems } from "@/app/inventory/constants/batch_items";
 
 export default function EditModal({
   open,
@@ -25,133 +24,151 @@ export default function EditModal({
   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
   data: InventoryItems;
 }) {
-  const [name, setName] = useState(data.name);
-  const [stockQuantity, setStockQuantity] = useState(
-    String(data.stock_quantity)
-  );
-  const [unitPrice, setUnitPrice] = useState(String(data.unit_price));
+  const [mode, setMode] = useState<"batch" | "edit">("batch");
+  const [batchId, setBatchId] = useState<string>("");
+
+  const [batchQuantity, setBatchQuantity] = useState("");
+  const [batchUnitCost, setBatchUnitCost] = useState("");
+
   const { manualSync } = useOfflineSync();
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const batches = BatchItems().filter((b) => b.item_id === data.id);
+  const activeBatch = batches.find((b) => b.id === batchId);
 
-    const price = parseFloat(unitPrice || "0");
-    const quantity = parseFloat(stockQuantity || "0");
+  /** Load batch values into form */
+  const hydratedRef = useRef(false);
 
-    if (!name.trim()) return alert("Name is required");
-    if (quantity < 0) return alert("Stock quantity cannot be negative");
-    if (price < 0) return alert("Unit price cannot be negative");
+  useEffect(() => {
+    if (activeBatch && !hydratedRef.current) {
+      setBatchQuantity(String(activeBatch.quantity));
+      setBatchUnitCost(String(activeBatch.unit_cost));
+      hydratedRef.current = true;
+    }
+  }, [activeBatch]);
 
-    // // onAdd({ name, stock_quantity: quantity, unit_price: price, });
-    // console.log({name, stock_quantity: quantity, unit_price: price})
-
-    const sessionData = await getSession();
-
-    console.log("Session data:", sessionData);
-
-    if (!sessionData?.profile.phone) {
-      alert("User not authenticated!");
+  const handleSave = async () => {
+    if (!batchId) {
+      alert("No batch selected");
       return;
     }
 
-    function formatDate(date: Date) {
-      return date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      });
+    const quantity = Number(batchQuantity);
+    const unitCost = Number(batchUnitCost);
+
+    if (quantity < 0 || unitCost < 0) {
+      alert("Values cannot be negative");
+      return;
     }
 
-    await offlineUpdate("inventory_items", {
-      id: data.id,
-      // phone: sessionData.profile.phone,
-      name: name,
-      unit_price: price,
-      stock_quantity: quantity,
-      updated_at: formatDate(new Date()),
+    await offlineUpdate("inventory_batches", {
+      id: batchId,
+      item_id: data.id,
+      quantity,
+      unit_cost: unitCost,
+      updated_at: new Date().toISOString(),
     });
 
-    console.log("Pending sync after update:", await db.pending_sync.toArray());
+    console.log("Pending sync:", await db.pending_sync.toArray());
 
-    // Now trigger sync
     await manualSync();
 
-    // await manualSync();
-    //  await manualSync();
+    resetAndClose();
+  };
 
-    alert("Item was saved offline, would sync when online!");
-
-    // reset form
-    setName("");
-    setStockQuantity("0");
-    setUnitPrice("0");
-
+  const resetAndClose = () => {
+    hydratedRef.current = false;
+    setMode("batch");
+    setBatchId("");
+    setBatchQuantity("");
+    setBatchUnitCost("");
     setOpen(false);
-    // setTimeout(() => {
-    // manualSync();
-    // }, 50);
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Item</DialogTitle>
-        </DialogHeader>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v);
+        if (!v) resetAndClose();
+      }}
+    >
+      {mode === "batch" ? (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose Batch of {data.name}</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <label>Item Name</label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Item Name"
-            />
+          <div className="space-y-3">
+            {batches.map((b) => (
+              <div
+                key={b.id}
+                className="flex justify-between items-center bg-gray-200 p-3 rounded"
+              >
+                <div>
+                  <p>Qty: {b.quantity}</p>
+                  <p>Cost: {b.unit_cost}</p>
+                </div>
+
+                <Button
+                  className="bg-gray-600 text-white hover:cursor-pointer"
+                  onClick={() => {
+                    setBatchId(b.id);
+                    setMode("edit");
+                  }}
+                >
+                  Edit
+                </Button>
+              </div>
+            ))}
           </div>
+        </DialogContent>
+      ) : (
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Batch</DialogTitle>
+          </DialogHeader>
 
-          <div>
-            <label>Quantity</label>
-            <Input
-              type="number"
-              value={stockQuantity}
-              onChange={(e) => {
-                const v = e.target.value;
+          <div className="space-y-4">
+            <div>
+              <label>Quantity</label>
+              <Input
+                type="number"
+                value={batchQuantity}
+                onChange={(e) => setBatchQuantity(e.target.value)}
+              />
+            </div>
 
-                // allow empty, digits, and decimals
-                if (/^[0-9]*\.?[0-9]*$/.test(v)) {
-                  setStockQuantity(v);
-                }
-              }}
-              placeholder="Quantity"
-            />
+            <div>
+              <label>Unit Cost</label>
+              <Input
+                type="number"
+                value={batchUnitCost}
+                onChange={(e) => setBatchUnitCost(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-between">
+              <span
+                className="cursor-pointer"
+                onClick={() => {
+                  hydratedRef.current = false;
+                  setMode("batch");
+                  setBatchId("");
+                }}
+              >
+                Back
+              </span>
+
+              <Button
+                className="bg-gray-600 text-white hover:cursor-pointer"
+                onClick={handleSave}
+              >
+                Save
+              </Button>
+            </div>
           </div>
-
-          <div>
-            <label>Unit Price</label>
-            <Input
-              type="number"
-              value={unitPrice}
-              onChange={(e) => {
-                const v = e.target.value;
-
-                // allow empty, digits, and decimals
-                if (/^[0-9]*\.?[0-9]*$/.test(v)) {
-                  setUnitPrice(v);
-                }
-              }}
-              placeholder="Unit Price"
-            />
-          </div>
-
-          <Button
-            className="w-full bg-gray-600 text-white hover:cursor-pointer"
-            onClick={handleSave}
-          >
-            Save Changes
-          </Button>
-        </div>
-      </DialogContent>
+        </DialogContent>
+      )}
     </Dialog>
   );
 }

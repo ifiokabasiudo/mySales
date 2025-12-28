@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AddItemModal from "@/app/inventory/components/addItemModal";
 import SalesAddModal from "@/app/dashboard/addSale/quick-sale/components/salesAddModal";
 import InventorySalesAddModal from "@/app/dashboard/addSale/inventory-sale/components/inventorySalesAddModal";
 import { offlineInsert } from "@/lib/offline";
 import { getSession } from "@/lib/session";
 import useOfflineSync from "@/hooks/useOfflineSync";
+import RestockModal from "@/app/inventory/components/restock-modal";
+import AddExpenseModal from "@/app/table/expenses/components/addExpenseModal";
+import { db } from "@/lib/db";
 
 export default function TableNavbar({
   header,
@@ -18,8 +21,53 @@ export default function TableNavbar({
   download?: string;
 }) {
   const [isModalOpen, setModalOpen] = useState(false);
+  const [isRestockOpen, setRestockOpen] = useState(false);
 
   const { manualSync } = useOfflineSync();
+
+  // useEffect(() => {
+  //   const test = async () => {
+  //     await backfillInventoryBatches();
+  //     await manualSync();
+  //   };
+  //   test();
+  // }, []);
+
+  // async function backfillInventoryBatches() {
+  //   const allBatches = await db.inventory_batches.toArray();
+  //   const pending = await db.pending_sync
+  //     .where("table")
+  //     .equals("inventory_batches")
+  //     .toArray();
+
+  //   const pendingIds = new Set(pending.map((p) => p.payload?.id));
+  //   const missing = allBatches.filter((b) => !pendingIds.has(b.id));
+
+  //   const now = new Date().toISOString();
+
+  //   await db.transaction("rw", db.pending_sync, async () => {
+  //     for (const batch of missing) {
+  //       await db.pending_sync.add({
+  //         table: "inventory_batches",
+  //         action: "insert", // or "update" if you prefer
+  //         payload: batch,
+  //         created_at: now,
+  //         tries: 0,
+  //       });
+  //     }
+  //   });
+
+  //   console.log(`Backfilled ${missing.length} inventory_batches for sync`);
+  // }
+
+  // useEffect(() => {
+  //   const deleteTable = async () => {
+  //     await db.delete(); // Dexie
+  //     location.reload();
+  //   };
+
+  //   deleteTable()
+  // }, []);
 
   const handleAddItem = async (
     item:
@@ -58,7 +106,7 @@ export default function TableNavbar({
         name: item.name,
         unit_price: item.unit_price,
         stock_quantity: item.stock_quantity,
-        created_at: formatDate(new Date()),
+        // created_at: formatDate(new Date()),
       });
     }
 
@@ -73,22 +121,23 @@ export default function TableNavbar({
         mode: item.mode,
         status: "pending",
         reconciled_amount: 0,
-        created_at: formatDate(new Date()),
+        // created_at: formatDate(new Date()),
       });
     }
 
-    console.log("Inventory sales items: ", item)
+    console.log("Inventory sales items: ", item);
 
     if (header === "Inventory Sales") {
       await offlineInsert("inventory_sales", {
         id: crypto.randomUUID(),
+        client_sale_id: crypto.randomUUID(),
         phone: data.profile.phone,
         item_id: item.id,
         name: item.name,
         quantity: item.quantity,
         selling_price: item.selling_price,
         payment_type: item.payment_type,
-        created_at: formatDate(new Date()),
+        // created_at: formatDate(new Date()),
       });
     }
 
@@ -97,10 +146,60 @@ export default function TableNavbar({
     alert("Item was saved offline, would sync when online!");
   };
 
+  const handleRestock = async (item: {
+    id: string;
+    name: string;
+    stock_quantity: number;
+    unit_price: number;
+  }) => {
+    console.log("New item:", item);
+    const data = await getSession();
+
+    console.log("Session data:", data);
+
+    if (!data?.profile.phone) {
+      alert("User not authenticated!");
+      return;
+    }
+
+    function formatDate(date: Date) {
+      return date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "2-digit",
+        year: "numeric",
+      });
+    }
+
+    await offlineInsert("inventory_batches", {
+      id: crypto.randomUUID(),
+      item_id: item.id, // needed so Dexie + Supabase share same ID
+      phone: data.profile.phone,
+      // auth_user_id: null,
+      // item_code: "ITEM-0200",
+      // name: item.name,
+      unit_cost: item.unit_price,
+      quantity: item.stock_quantity,
+      // created_at: formatDate(new Date()),
+    });
+
+    await manualSync();
+
+    alert("Item was saved offline, would sync when online!");
+  };
+
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className="flex flex-col gap-3">
       <h1 className="text-2xl font-semibold">{header}</h1>
-      <div className="flex text-md gap-4">
+      <div className="flex justify-between text-md gap-4">
+        {addItem && header === "Inventory" && (
+          <button
+            onClick={() => setRestockOpen(true)}
+            className="bg-white text-black px-3 text-sm rounded-full shadow-xl hover:bg-gray-300 hover:cursor-pointer"
+          >
+            Restock
+          </button>
+        )}
         {addItem && (
           <button
             onClick={() => setModalOpen(true)}
@@ -127,6 +226,13 @@ export default function TableNavbar({
           onAdd={handleAddItem}
         />
       )}
+      {addItem && header === "Inventory" && (
+        <RestockModal
+          isOpen={isRestockOpen}
+          onClose={() => setRestockOpen(false)}
+          onAdd={handleRestock}
+        />
+      )}
       {addItem && header === "Quick Sales" && (
         <SalesAddModal
           isOpen={isModalOpen}
@@ -139,6 +245,13 @@ export default function TableNavbar({
           isOpen={isModalOpen}
           onClose={() => setModalOpen(false)}
           onAdd={handleAddItem}
+        />
+      )}
+      {addItem && header === "Expenses" && (
+        <AddExpenseModal
+          isOpen={isModalOpen}
+          onClose={() => setModalOpen(false)}
+          // onAdd={handleAddItem}
         />
       )}
     </div>

@@ -1,10 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SearchBar from "./searchBar";
 import { offlineInsert } from "@/lib/offline";
 import { getSession } from "@/lib/session";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import { db } from "@/lib/db";
+import { useSearchParams } from "next/navigation";
 
 type CartItem = {
   id: string;
@@ -15,7 +16,10 @@ type CartItem = {
 };
 
 export default function NewSale() {
-  const [mode, setMode] = useState("quick");
+  const searchParams = useSearchParams();
+  const saleType = searchParams.get("sale");
+
+  const [mode, setMode] = useState<"quick" | "inventory">("quick");
   const [paymentType, setPaymentType] = useState("Cash");
   const [searchValue, setSearchValue] = useState("");
   const [searchId, setSearchId] = useState("");
@@ -26,6 +30,14 @@ export default function NewSale() {
   const [inventorySaleAmount, setInventorySaleAmount] = useState("e.g. 5000");
   const [note, setNote] = useState("");
   const options = ["Cash", "POS", "Transfer"];
+
+  useEffect(() => {
+    if (saleType === "quick" || saleType === "inventory") {
+      setMode(saleType);
+    } else {
+      setMode("quick"); // default
+    }
+  }, [saleType]);
 
   const { manualSync } = useOfflineSync();
 
@@ -44,7 +56,7 @@ export default function NewSale() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!mode || mode === "") {
+    if (mode !== "quick" && mode !== "inventory") {
       return alert("Please select a mode");
     }
 
@@ -80,7 +92,7 @@ export default function NewSale() {
         mode: paymentType,
         status: "pending",
         reconciled_amount: 0,
-        created_at: formatDate(new Date()),
+        // created_at: formatDate(new Date()),
       });
 
       setQuickSaleAmount("");
@@ -109,7 +121,7 @@ export default function NewSale() {
       await db.transaction(
         "rw",
         db.inventory_sales,
-        db.inventory_items,
+        db.inventory_batches,
         db.pending_sync,
         async () => {
           for (const item of itemsToSave) {
@@ -121,7 +133,7 @@ export default function NewSale() {
               quantity: item.quantity,
               selling_price: item.amount,
               payment_type: item.paymentType,
-              created_at: formatDate(new Date()),
+              // created_at: formatDate(new Date()),
             });
           }
         }
@@ -195,7 +207,7 @@ export default function NewSale() {
   };
 
   return (
-    <div className="flex flex-col items-center p-4 mt-16">
+    <div className="flex flex-col items-center p-4">
       <div className="w-full max-w-sm p-4">
         <h2 className="text-3xl font-semibold mb-4">Add Sale</h2>
 

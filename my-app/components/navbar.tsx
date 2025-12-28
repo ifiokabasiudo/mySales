@@ -31,7 +31,7 @@ export default function Navbar() {
   return (
     <>
       <MainSync />
-      <nav className="w-full sticky z-50 bg-[#ECEFF0] flex items-center justify-between px-4">
+      <nav className="w-full sticky z-50 bg-[#ECEFF0] flex items-center justify-between">
       <div className="flex items-center gap-2">
         <a href="#" className="p-3 md:p-5 cursor-pointer">
             <svg

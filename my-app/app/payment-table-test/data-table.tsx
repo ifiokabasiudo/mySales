@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { Inter } from "next/font/google";
+
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -36,6 +38,11 @@ import {
 import { Input } from "@/components/ui/input";
 
 import { useState } from "react";
+
+const inter = Inter({
+  weight: "400",
+  subsets: ["latin"],
+});
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -98,7 +105,7 @@ export function DataTable<TData, TValue>({
 
   return (
     <div>
-      <div className="flex items-center py-4">
+      <div className={`flex items-center py-4 ${inter.className}`}>
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-none" asChild>
             <Button variant="outline" className="ml-auto">
