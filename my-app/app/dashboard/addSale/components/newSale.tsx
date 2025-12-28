@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import SearchBar from "./searchBar";
 import { offlineInsert } from "@/lib/offline";

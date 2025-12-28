@@ -1,6 +1,7 @@
 import Navbar from "@/components/navbar";
 import NewSale from "./components/newSale";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 // import MainSync from "@/hooks/mainSync";
 
 const inter = Inter({
@@ -16,7 +17,7 @@ export default function AddSale() {
         className={`flex flex-col bg-[#ECEFF0] min-h-screen tracking-wider ${inter.className}`}
       >
         <Navbar />
-        <NewSale />
+        <Suspense fallback={<div>Loading...</div>}><NewSale /></Suspense>
       </div>
     </>
   );
