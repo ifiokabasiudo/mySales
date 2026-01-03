@@ -60,6 +60,8 @@ export type InventorySale = {
   selling_price: number;
   total_amount: number;
   payment_type: string;
+  sync_status: "pending" | "confirmed" | "rejected";
+  rejection_reason?: string | null;
   soft_deleted?: boolean;
   deleted_reason?: string | null;
   deleted_at?: string | null;

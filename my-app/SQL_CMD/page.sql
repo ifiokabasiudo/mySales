@@ -42,7 +42,7 @@ create table reconciliation_links (
   -- )
 );
 
-create or replace function set_updated_at()
+create or replace function set_updated_at() -- checked
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -64,7 +64,7 @@ $$ language plpgsql;
 -- end;
 -- $$ language plpgsql;
 
-create or replace function reverse_reconciliation () returns trigger as $$
+create or replace function reverse_reconciliation () returns trigger as $$ -- checkeed
 begin
   if old.soft_deleted = false and new.soft_deleted = true then
     update quick_sales
@@ -79,7 +79,7 @@ begin
 end;
 $$ language plpgsql;
 
-create or replace function update_quick_sales_status()
+create or replace function update_quick_sales_status() -- checked
 returns trigger as $$
 begin
   update quick_sales
@@ -96,7 +96,7 @@ end;
 $$ language plpgsql;
 
 
-create or replace function apply_reconciliation()
+create or replace function apply_reconciliation() -- checked
 returns trigger as $$
 begin
   update quick_sales
@@ -155,7 +155,7 @@ create table quick_sales (
   );
 );
 
-CREATE OR REPLACE FUNCTION block_reconciled_quick_sales_changes()
+CREATE OR REPLACE FUNCTION block_reconciled_quick_sales_changes() -- checked
 RETURNS trigger AS $$
 BEGIN
   -- Allow reconciliation/system updates
@@ -183,7 +183,7 @@ BEFORE UPDATE OR DELETE ON quick_sales
 FOR EACH ROW
 EXECUTE FUNCTION block_reconciled_quick_sales_changes();
 
-create or replace function set_updated_at()
+create or replace function set_updated_at() -- checked
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -222,7 +222,7 @@ create table inventory_sales (
   updated_at timestamp default now()
 );
 
-create or replace function block_inventory_sale_if_reconciled()
+create or replace function block_inventory_sale_if_reconciled() -- checked
 returns trigger as $$
 begin
   if exists (
@@ -244,7 +244,7 @@ execute function block_inventory_sale_if_reconciled();
 
 
 -- Auto-calculate total_amount
-create or replace function calculate_total_amount()
+create or replace function calculate_total_amount() -- checked
 returns trigger as $$
 begin
   new.total_amount := new.selling_price * new.quantity;
@@ -253,7 +253,7 @@ end;
 $$ language plpgsql;
 
 -- updated_at trigger function
-create or replace function set_updated_at()
+create or replace function set_updated_at() -- checked
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -359,7 +359,7 @@ create table inventory_items (
 create sequence item_code_seq start 1 owned by inventory_items.id;
 
 -- Item Code Generator
-create or replace function generate_item_code()
+create or replace function generate_item_code() -- checked
 returns trigger as $$
 begin
   if new.item_code is null then
@@ -370,7 +370,7 @@ end;
 $$ language plpgsql;
 
 -- Block manual updates to item_code
-create or replace function prevent_item_code_update()
+create or replace function prevent_item_code_update() -- checked
 returns trigger as $$
 begin
   if old.item_code is not null then
@@ -381,7 +381,7 @@ end;
 $$ language plpgsql;
 
 -- updated_at trigger function
-create or replace function set_updated_at()
+create or replace function set_updated_at() -- checked
 returns trigger as $$
 begin
   new.updated_at = now();
@@ -434,7 +434,7 @@ for each row
 execute function set_updated_at();
 
 
-create or replace function recompute_inventory_item(item uuid)
+create or replace function recompute_inventory_item(item uuid) -- checked
 returns void as $$
 declare
   total_stock integer;
@@ -467,7 +467,7 @@ end;
 $$ language plpgsql;
 
 
-create or replace function inventory_batch_changed()
+create or replace function inventory_batch_changed() -- checked
 returns trigger as $$
 begin
   perform recompute_inventory_item(new.item_id);
@@ -484,7 +484,242 @@ after update on inventory_batches
 for each row execute function inventory_batch_changed();
 
 
-create or replace function public.apply_inventory_sale()
+create or replace function create_cogs_expense() -- checked
+returns trigger as $$
+declare
+  v_cost numeric(16,2);
+begin
+  INSERT INTO expenses (
+    id,
+    phone,
+    inventory_sales_id,
+    type,
+    category,
+    quantity,
+    unit_cost,
+    total_cost,
+    system_generated,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    gen_random_uuid(),
+    NEW.phone,
+    NEW.id,
+    'cogs',
+    'inventory',
+    NEW.batch_quantity_at_sale,
+    NEW.batch_unit_cost,
+    NEW.batch_quantity_at_sale * NEW.batch_unit_cost,
+    TRUE,
+    now(),
+    now()
+  );
+
+  RETURN NEW;
+end;
+$$ language plpgsql;
+
+create trigger inventory_sale_cogs_trigger
+after insert on inventory_sales
+for each row
+execute function create_cogs_expense();
+
+CREATE OR REPLACE FUNCTION public.handle_inventory_sale_update() -- checked
+RETURNS trigger AS $$
+DECLARE
+    v_expense_id uuid;
+    v_quantity_changed boolean := NEW.quantity <> OLD.quantity;
+    v_has_reconciliation boolean;
+BEGIN
+    -- Ignore old soft-deleted rows
+    IF OLD.soft_deleted THEN
+        RETURN NEW;
+    END IF;
+
+    -- 🔒 Batch is immutable
+    IF NEW.batch_id <> OLD.batch_id THEN
+        RAISE EXCEPTION 'Changing batch on a sale is not allowed';
+    END IF;
+
+    -- 🔒 Quantity must be positive
+    IF NEW.quantity <= 0 THEN
+        RAISE EXCEPTION 'Sale quantity must be greater than zero';
+    END IF;
+
+    -- 🔒 Prevent edits if reconciled
+    SELECT EXISTS (
+        SELECT 1
+        FROM reconciliation_links
+        WHERE inventory_sales_id = OLD.id
+          AND soft_deleted = false
+    ) INTO v_has_reconciliation;
+
+    IF v_has_reconciliation THEN
+        IF v_quantity_changed THEN
+            RAISE EXCEPTION 'Cannot edit quantity: sale has reconciliations';
+        END IF;
+        IF NEW.selling_price <> OLD.selling_price THEN
+            RAISE EXCEPTION 'Cannot edit selling price: sale has reconciliations';
+        END IF;
+    END IF;
+
+    -- --------------------------
+    -- 1️⃣ Handle soft delete
+    -- --------------------------
+    IF NEW.soft_deleted THEN
+        -- Soft delete related COGS expense
+        PERFORM set_config('app.allow_system_expense_update', 'true', true);
+
+        UPDATE expenses
+        SET soft_deleted = true,
+            deleted_reason = 'inventory sale deleted',
+            deleted_at = now(),
+            updated_at = now()
+        WHERE inventory_sales_id = OLD.id
+          AND type = 'cogs'
+          AND soft_deleted = false;
+
+        RETURN NEW;
+    END IF;
+
+    -- --------------------------
+    -- 2️⃣ Quantity changed? adjust batch and COGS
+    -- --------------------------
+    IF v_quantity_changed THEN
+        -- Restore old batch quantity
+        UPDATE inventory_batches
+        SET quantity = quantity + OLD.quantity,
+            is_active = true
+        WHERE id = OLD.batch_id;
+
+        -- Deduct new quantity
+        UPDATE inventory_batches
+        SET quantity = quantity - NEW.quantity,
+            is_active = (quantity - NEW.quantity) > 0
+        WHERE id = NEW.batch_id;
+
+        -- Recompute item stock
+        PERFORM recompute_inventory_item(NEW.item_id);
+
+        -- Update COGS expense
+        PERFORM set_config('app.allow_system_expense_update', 'true', true);
+
+        SELECT id
+        INTO v_expense_id
+        FROM expenses
+        WHERE inventory_sales_id = NEW.id
+          AND type = 'cogs'
+          AND soft_deleted = false
+        LIMIT 1;
+
+        IF v_expense_id IS NOT NULL THEN
+            UPDATE expenses
+            SET quantity = NEW.quantity,
+                total_cost = NEW.quantity * NEW.batch_unit_cost,
+                updated_at = now()
+            WHERE id = v_expense_id;
+        END IF;
+    END IF;
+
+    -- --------------------------
+    -- 3️⃣ Selling price or payment type change? update revenue only
+    -- --------------------------
+    IF NEW.selling_price <> OLD.selling_price
+       OR NEW.payment_type <> OLD.payment_type THEN
+        NEW.total_amount := NEW.quantity * NEW.selling_price;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+create trigger trg_inventory_sales_update
+before update on inventory_sales
+for each row
+execute function handle_inventory_sale_update();
+
+CREATE OR REPLACE FUNCTION protect_system_expensses() -- checked
+RETURNS trigger AS $$
+BEGIN
+  -- Only allow internal updates if the flag is set
+  IF OLD.system_generated = true AND current_setting('app.allow_system_expense_update', true) <> 'true' THEN
+    RAISE EXCEPTION 'System-generated expenses cannot be modified or deleted';
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+create trigger lock_system_expenses
+before update or delete on expenses
+for each row
+execute function protect_system_expensses();
+
+
+create or replace function restore_batch_stock() -- checked
+returns trigger as $$
+
+begin
+  if old.soft_deleted = false and new.soft_deleted = true then
+    update inventory_batches
+    set
+      quantity = quantity + old.quantity,
+      is_active = true
+    where id = old.batch_id;
+
+    perform recompute_inventory_item(old.item_id);
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+create trigger restore_batch_stock_trigger
+after update on inventory_sales
+for each row
+execute function restock_batch_stock();
+
+--Things I did
+
+alter table inventory_sales
+add column batch_unit_cost numeric(16,2),
+add column batch_quantity_at_sale integer;
+
+alter table expenses
+alter column inventory_sales_id drop not null;
+
+ALTER TABLE expenses
+ALTER COLUMN inventory_sales_id DROP NOT NULL;
+
+ALTER TABLE expenses
+ALTER COLUMN quantity DROP NOT NULL,
+ALTER COLUMN unit_cost DROP NOT NULL;
+
+ALTER TABLE expenses
+ADD COLUMN amount numeric(16,2);
+
+-- UPDATE expenses
+-- SET amount = total_cost
+-- WHERE amount IS NULL;
+
+ALTER TABLE expenses
+ALTER COLUMN amount SET NOT NULL;
+
+ALTER TABLE expenses
+ADD COLUMN system_generated boolean DEFAULT false;
+
+-- UPDATE expenses
+-- SET system_generated = true
+-- WHERE type = 'cogs';
+
+ALTER TABLE expenses
+ALTER COLUMN category DROP DEFAULT;
+
+
+
+
+
+create or replace function public.apply_inventory_sale() --checked
 returns trigger as $$
 declare
   v_remaining integer := new.quantity;
@@ -544,43 +779,168 @@ after insert on inventory_sales
 for each row
 execute function public.apply_inventory_sale();
 
+-- CREATE OR REPLACE FUNCTION apply_inventory_sale_on_confirm()
+-- RETURNS trigger AS $$
+-- BEGIN
+--   IF NEW.status = 'confirmed' AND OLD.status <> 'confirmed' THEN
+--     -- FIFO logic here 
+--   END IF;
+
+--   RETURN NEW;
+-- END;
+-- $$ LANGUAGE plpgsql;
+
+-- CREATE TRIGGER trg_inventory_sale_confirm
+-- AFTER UPDATE OF status ON inventory_sales
+-- FOR EACH ROW
+-- EXECUTE FUNCTION apply_inventory_sale_on_confirm();
+
+-- PERFORM public.apply_inventory_sale(NEW);
 
 
--- create or replace function create_cogs_expense()
--- returns trigger as $$
--- declare
---   v_cost numeric(16,2);
--- begin
---   select unit_cost
---   into v_cost
---   from inventory_batches
---   where id = new.batch_id;
 
---   insert into expenses (
---     phone,
---     inventory_sales_id,
---     type,
---     category,
---     quantity,
---     unit_cost,
---     total_cost
---   )
---   values (
---     new.phone,
---     new.id,
---     'cogs',
---     'inventory',
---     new.quantity,
---     v_cost,
---     new.quantity * v_cost
---   );
+-- New Stuffs for Syncing
+ALTER TABLE inventory_sales
+ADD COLUMN sync_status text NOT NULL DEFAULT 'pending'
+CHECK (sync_status IN ('pending', 'confirmed', 'rejected'));
 
---   return new;
--- end;
--- $$ language plpgsql;
+ALTER TABLE inventory_sales
+ADD COLUMN rejection_reason text;
 
--- create trigger trg_create_cogs_expense
--- after insert on inventory_sales
--- for each row
--- execute function create_cogs_expense();
+CREATE OR REPLACE FUNCTION confirm_inventory_sale(
+  p_client_sale_id uuid,
+  p_item_id uuid,
+  p_quantity integer,
+  p_selling_price numeric,
+  p_phone text,
+  p_payment_type text
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_stock integer;
+  v_sale_id uuid;
+BEGIN
+  -- Lock stock
+  SELECT stock_quantity
+  INTO v_stock
+  FROM inventory_items
+  WHERE id = p_item_id
+  FOR UPDATE;
+
+  IF v_stock < p_quantity THEN
+    RETURN jsonb_build_object(
+      'status', 'rejected',
+      'reason', 'insufficient_stock'
+    );
+  END IF;
+
+  -- Create sale
+  INSERT INTO inventory_sales (
+    id,
+    client_sale_id,
+    item_id,
+    quantity,
+    selling_price,
+    total_amount,
+    phone,
+    payment_type,
+    sync_status,
+    created_at,
+    updated_at
+  )
+  VALUES (
+    gen_random_uuid(),
+    p_client_sale_id,
+    p_item_id,
+    p_quantity,
+    p_selling_price,
+    p_quantity * p_selling_price,
+    p_phone,
+    p_payment_type,
+    'confirmed',
+    now(),
+    now()
+  )
+  RETURNING id INTO v_sale_id;
+
+  -- FIFO deduction (your existing logic)
+  PERFORM apply_inventory_sale(v_sale_id);
+
+  RETURN jsonb_build_object(
+    'status', 'confirmed',
+    'sale_id', v_sale_id
+  );
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_inventory_sale_insert ON inventory_sales;
+
+CREATE OR REPLACE FUNCTION public.apply_inventory_sale(p_sale_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  v_sale inventory_sales;
+  v_remaining integer;
+  v_take integer;
+  v_batch inventory_batches;
+BEGIN
+  SELECT *
+  INTO v_sale
+  FROM inventory_sales
+  WHERE id = p_sale_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Sale not found';
+  END IF;
+
+  IF v_sale.quantity <= 0 THEN
+    RAISE EXCEPTION 'Quantity must be greater than zero';
+  END IF;
+
+  IF v_sale.sync_status <> 'confirmed' THEN
+    RAISE EXCEPTION 'FIFO can only run on confirmed sales';
+  END IF;
+
+  v_remaining := v_sale.quantity;
+
+  WHILE v_remaining > 0 LOOP
+    SELECT *
+    INTO v_batch
+    FROM inventory_batches
+    WHERE item_id = v_sale.item_id
+      AND is_active = true
+      AND soft_deleted = false
+    ORDER BY created_at ASC
+    LIMIT 1
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'Insufficient stock for item %', v_sale.item_id;
+    END IF;
+
+    v_take := LEAST(v_batch.quantity, v_remaining);
+
+    UPDATE inventory_batches
+    SET
+      quantity = quantity - v_take,
+      is_active = (quantity - v_take) > 0
+    WHERE id = v_batch.id;
+
+    UPDATE inventory_sales
+    SET batch_id = v_batch.id
+    WHERE id = v_sale.id
+      AND batch_id IS NULL;
+
+    v_remaining := v_remaining - v_take;
+  END LOOP;
+
+  PERFORM recompute_inventory_item(v_sale.item_id);
+END;
+$$;
+
+
 

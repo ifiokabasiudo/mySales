@@ -2,7 +2,6 @@ import Navbar from "@/components/navbar";
 import NewSale from "./components/newSale";
 import { Inter } from "next/font/google";
 import { Suspense } from "react";
-// import MainSync from "@/hooks/mainSync";
 
 const inter = Inter({
   weight: "400",
