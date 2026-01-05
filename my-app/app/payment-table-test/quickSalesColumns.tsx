@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import RowActionsQuickSale from "./rowActions/rowActionsQuickSale"
+import { formatDate } from "@/lib/isoToNormalDate"; 
 
 export type QuickSales = {
     id: string;
@@ -160,7 +161,7 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
     String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
       const updated_at: any = row.getValue("updated_at")
-      return <div className="text-right font-medium">{updated_at}</div>
+      return <div className="text-right font-medium">{formatDate(updated_at)}</div>
     },
   },
 ]

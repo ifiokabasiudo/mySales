@@ -12,6 +12,7 @@ import { useSafeAction } from "@/hooks/useSafeAction";
 import { BatchItems } from "@/app/inventory/constants/batch_items";
 import { useActiveBatch } from "@/lib/inventory-sales/useActiveBatch";
 import CheckOutTableButton from "@/components/checkout-table-button";
+import { useInventorySearchGuard } from "@/hooks/useInventorySearchGuard";
 
 type CartItem = {
   id: string;
@@ -63,18 +64,20 @@ export default function NewSale() {
   const isInventoryEmpty = items.length == 0;
   const batch = useActiveBatch(items, searchId);
 
-  const handleSearchAttempt = () => {
-    if (isInventoryEmpty) {
-      setShowModal(true);
-      setTable({
-        tableName: "Inventory",
-        link: "/inventory", // wherever your inventory table is
-      });
-      return;
-    }
+  const handleSearchAttempt = useInventorySearchGuard(isInventoryEmpty, setShowModal, setTable)
 
-    // Proceed with search logic if inventory is not empty
-  };
+  // const handleSearchAttempt = () => {
+  //   if (isInventoryEmpty) {
+  //     setShowModal(true);
+  //     setTable({
+  //       tableName: "Inventory",
+  //       link: "/inventory", // wherever your inventory table is
+  //     });
+  //     return;
+  //   }
+
+  //   // Proceed with search logic if inventory is not empty
+  // };
 
   const buildCurrentItem = (): CartItem | null => {
     if (!searchValue || !searchId) return null;
@@ -277,7 +280,7 @@ export default function NewSale() {
     setEditIndex(index);
   };
 
-  const isMultiItem = cart.length > 0;
+  // const isMultiItem = cart.length > 0;
 
   const canFinish =
     !isDraftItem && // no half-filled item
@@ -387,7 +390,7 @@ export default function NewSale() {
                 disabled={isLoading}
                 type="submit"
                 className={`w-full bg-[#1C8220] text-white py-3 rounded-lg font-semibold hover:cursor-pointer ${
-                  isLoading ? "opacity-50 cursor-not-allowed" : ""
+                  isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""
                 }`}
               >
                 {isLoading ? "Saving…" : "Submit"}
@@ -405,7 +408,7 @@ export default function NewSale() {
                 setSearchId={setSearchId}
                 outline={outline}
                 setOutline={setOutline}
-                onSearch={handleSearchAttempt}
+                onSearch={() => handleSearchAttempt({name: "Inventory", link: "/inventory"})}
               />
 
               {batch && (

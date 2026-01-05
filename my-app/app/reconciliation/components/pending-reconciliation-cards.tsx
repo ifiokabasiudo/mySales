@@ -4,6 +4,11 @@ import { NonReconciledSales } from "../constants/non-reconciled-sales";
 import { useState } from "react";
 import ReconciliationModal from "./reconciliation-modal";
 import ReverseReconciliationModal from "./reverse-reconciliation-modal";
+import { TableData } from "@/app/dashboard/addSale/components/newSale";
+import { BatchItems } from "@/app/inventory/constants/batch_items";
+import { useInventorySearchGuard } from "@/hooks/useInventorySearchGuard";
+import Modal from "@/components/modal-component";
+import CheckOutTableButton from "@/components/checkout-table-button";
 
 type Sale = {
   id: string;
@@ -17,64 +22,112 @@ type Sale = {
 export default function PendingReconciliationCards() {
   const [selectedSale, setSelectedSale] = useState<Sale>(null);
   const [open, setOpen] = useState(false);
-  const [reverseReconciliationOpen, setReverseReconciliationOpen] =
-    useState(false);
+  const [reverseReconciliationOpen, setReverseReconciliationOpen] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [table, setTable] = useState<TableData>(null);
+
+  const items = BatchItems();
+  const isInventoryEmpty = items.length == 0;
+
+  const handleSearchAttempt = useInventorySearchGuard(
+    isInventoryEmpty,
+    setShowModal,
+    setTable
+  );
 
   const sales = NonReconciledSales();
   return (
-    <div className="flex flex-col gap-3 w-full bg-white rounded-xl h-[calc(100vh-20px)] p-4">
-      {sales.map((sale) => (
-        <div
-          key={sale.id}
-          className="flex flex-col w-full bg-[#C0DFC1] rounded-lg p-4 text-[#3C3A3A]"
-        >
-          <div className="flex justify-between">
-            <h1 className="text-black text-2xl font-bold">
-              ₦{sale.total_amount - sale.reconciled_amount}
-            </h1>
-            <p>{sale?.status}</p>
+    <>
+      <div className="flex flex-col gap-3 w-full bg-white rounded-xl h-[calc(100vh-20px)] p-4">
+        {sales.map((sale) => (
+          <div
+            key={sale.id}
+            className="flex flex-col w-full bg-[#C0DFC1] rounded-lg p-4 text-[#3C3A3A]"
+          >
+            <div className="flex justify-between">
+              <h1 className="text-black text-2xl font-bold">
+                ₦{sale.total_amount - sale.reconciled_amount}
+              </h1>
+              <p>{sale?.status}</p>
+            </div>
+            <div className="flex justify-between">
+              <p className="max-w-60">{sale?.note}</p>
+              <button
+                className="rounded-full px-4 py-1 bg-white hover:cursor-pointer"
+                onClick={() => {
+                  setSelectedSale(sale);
+                  setOpen(true);
+                }}
+              >
+                Allocate
+              </button>
+            </div>
+            {sale.status !== "pending" && (
+              <button
+                className="rounded-md px-4 py-1 mt-2 bg-white hover:cursor-pointer"
+                onClick={() => {
+                  setSelectedSaleId(sale.id);
+                  setReverseReconciliationOpen(true);
+                }}
+              >
+                Reverse Allocation &gt;
+              </button>
+            )}
           </div>
-          <div className="flex justify-between">
-            <p className="max-w-60">{sale?.note}</p>
-            <button
-              className="rounded-full px-4 py-1 bg-white hover:cursor-pointer"
-              onClick={() => {
-                setSelectedSale(sale);
-                setOpen(true);
-              }}
-            >
-              Allocate
-            </button>
-          </div>
-          {sale.status !== "pending" && (
-            <button
-              className="rounded-md px-4 py-1 mt-2 bg-white hover:cursor-pointer"
-              onClick={() => {
-                setSelectedSaleId(sale.id);
-                setReverseReconciliationOpen(true);
-              }}
-            >
-              Reverse Allocation &gt;
-            </button>
-          )}
-        </div>
-      ))}
-      <ReconciliationModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        sale={selectedSale}
-      />
-      {selectedSaleId && (
-        <ReverseReconciliationModal
-          // isOpen={reverseReconciliationOpen}
-          // setReverseReconciliationOpen(false)
-          onClose={() => {
-            setSelectedSaleId(null);
-          }}
-          quickSaleId={selectedSaleId}
+        ))}
+        <ReconciliationModal
+          isOpen={open}
+          onClose={() => setOpen(false)}
+          sale={selectedSale}
+          setShowModal={setShowModal}
+          handleSearchAttempt={handleSearchAttempt}
+          setTable={setTable}
         />
+        {selectedSaleId && (
+          <ReverseReconciliationModal
+            // isOpen={reverseReconciliationOpen}
+            // setReverseReconciliationOpen(false)
+            onClose={() => {
+              setSelectedSaleId(null);
+            }}
+            quickSaleId={selectedSaleId}
+          />
+        )}
+      </div>
+      {table && (
+        <Modal
+          show={showModal}
+          setShow={setShowModal}
+          alignment="bottom"
+          isIntercepting={true}
+          showCancelBtnINSmallDevice={true}
+          setTable={setTable}
+        >
+          <div className="flex flex-col gap-2">
+            {isInventoryEmpty ? (
+              <>
+                <h1 className="text-xl">No items found in your inventory!</h1>
+                <p className="text-sm text-gray-600">
+                  You need to add items before making a sale.
+                </p>
+                <CheckOutTableButton {...table} />
+              </>
+            ) : (
+              <>
+                <h1 className="text-xl">
+                  Would you like to see your sale in the <span className="text-green-700">{table.tableName}</span> Table?
+                </h1>
+                <CheckOutTableButton {...table} />
+              </>
+            )}
+            {/* <h1 className="text-xl">
+                  Would you like to visit the {table.tableName} Table?
+                </h1>
+                <CheckOutTableButton {...table} /> */}
+          </div>
+        </Modal>
       )}
-    </div>
+    </>
   );
 }

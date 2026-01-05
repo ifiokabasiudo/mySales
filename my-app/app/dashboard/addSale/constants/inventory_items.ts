@@ -12,7 +12,7 @@ export function InventoryItems() {
     soft_deleted: item.soft_deleted,
   }));
 
-  const finalData = dataForTable.filter(row => !row.soft_deleted && row.stock_quantity);
+  const finalData = dataForTable.filter(row => !row.soft_deleted);
 
   console.log("These are the inventory items: ", finalData)
 

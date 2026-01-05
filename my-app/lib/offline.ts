@@ -10,15 +10,6 @@ import {
   Expenses,
 } from "./db";
 
-function formatDate(date: Date) {
-  return date.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "2-digit",
-    year: "numeric",
-  });
-}
-
 function dateNow() {
   return new Date().toISOString();
 }

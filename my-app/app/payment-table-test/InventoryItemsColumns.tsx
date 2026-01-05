@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import RowActions from "./rowActions/rowActionsInventoryItems"
+import { formatDate } from "@/lib/isoToNormalDate"; 
 
 export type InventoryItems = {
   id: string
@@ -118,7 +119,7 @@ export const columns: ColumnDef<InventoryItems>[] = [
     String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
       const updated_at: any = row.getValue("updated_at")
-      return <div className="text-right font-medium">{updated_at}</div>
+      return <div className="text-right font-medium">{formatDate(updated_at)}</div>
     },
   },
 ]
