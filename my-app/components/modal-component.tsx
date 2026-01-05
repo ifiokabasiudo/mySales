@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { createPortal } from "react-dom";
-// import { useRouter } from "next/navigation";
+import { TableData } from "@/app/dashboard/addSale/components/newSale";
 
 const Modal = ({
   show,
@@ -14,6 +14,7 @@ const Modal = ({
   showCancelBtnINSmallDevice = false,
   isOnlySmallDevice = false,
   isOnlyLargeDevice = false,
+  setTable
 }: {
   show: boolean;
   setShow: Dispatch<SetStateAction<boolean>>;
@@ -24,6 +25,7 @@ const Modal = ({
   showCancelBtnINSmallDevice?: boolean;
   isOnlySmallDevice?: boolean;
   isOnlyLargeDevice?: boolean;
+  setTable: Dispatch<SetStateAction<TableData | null>>
 }) => {
   const [animate, setAnimate] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -45,8 +47,8 @@ const Modal = ({
     appearAnimation = "translate-y-[-227px]";
     disappearAnimation = "-translate-y-[100%]";
   } else if (alignment === "bottom") {
-    appearAnimation = "translate-y-[227px]";
-    disappearAnimation = "translate-y-[100%]";
+    appearAnimation = "translate-y-0";
+    disappearAnimation = "translate-y-full";
   }
 
   useEffect(() => {
@@ -64,6 +66,9 @@ const Modal = ({
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
     setAnimate(false);
+    if(alignment == "bottom") {
+        setTable(null)
+    }
     // if (isIntercepting) {
     //   redirect.back();
     // }
@@ -76,7 +81,10 @@ const Modal = ({
     <div
       className={`fixed ${
         show && `z-100 inset-0`
-      } bg-black/60 transition-opacity duration-300 ease-in-out flex items-center 
+      } bg-black/60 transition-opacity duration-300 ease-in-out flex ${
+        alignment != "bottom" && "items-center"
+      } 
+      ${alignment === "bottom" ? "items-end" : "items-center"}
       ${animate ? "opacity-100" : "opacity-0"}
       ${alignment === "right" && "justify-end"} 
       ${alignment === "center" && "justify-center"} 
@@ -85,9 +93,15 @@ const Modal = ({
       onClick={handleClose}
     >
       <div
-        className={`flex flex-col rounded relative shadow-black-50 drop-shadow-2xl bg-white p-5 duration-300 ease-in-out
-         ${alignment !== "center" && "h-full md:h-[calc(100%-16px)] md:m-2"}
-           ${animate ? appearAnimation : disappearAnimation} ${className}`}
+        className={`flex flex-col ${alignment != "bottom" ? "rounded" : "rounded-t-2xl"} relative shadow-black-50 drop-shadow-2xl bg-white p-5 duration-300 ease-in-out
+         ${alignment === "bottom" && "w-full"}
+            ${
+              alignment !== "center" &&
+              alignment !== "bottom" &&
+              "h-full md:h-[calc(100%-16px)] md:m-2"
+            }
+           
+            ${animate ? appearAnimation : disappearAnimation} ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* close handler */}

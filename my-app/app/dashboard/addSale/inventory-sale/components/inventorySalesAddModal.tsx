@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import SearchBar from "../../components/searchBar";
 import { BatchItems } from "@/app/inventory/constants/batch_items";
+import { useActiveBatch } from "@/lib/inventory-sales/useActiveBatch";
 
 type AddItemModalProps = {
   isOpen: boolean;
@@ -16,13 +17,13 @@ type AddItemModalProps = {
   }) => void;
 };
 
-type Batch = {
-  id: string;
-  item_id: string;
-  unit_cost: number;
-  quantity: number;
-  soft_deleted: boolean | undefined;
-};
+// type Batch = {
+//   id: string;
+//   item_id: string;
+//   unit_cost: number;
+//   quantity: number;
+//   soft_deleted: boolean | undefined;
+// };
 
 const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
   isOpen,
@@ -35,10 +36,13 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
   const [searchValue, setSearchValue] = useState("");
   const [searchId, setSearchId] = useState("");
   const [quantity, setQuantity] = useState("1");
-  const [batch, setBatch] = useState<Batch | null>(null);
+  // const [batch, setBatch] = useState<Batch | null>(null);
   const options = ["Cash", "POS", "Transfer"];
 
   const items = BatchItems();
+  const batch = useActiveBatch(items, searchId);
+
+  console.log("The batch in the inventory sales", batch);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,18 +70,16 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
     onClose();
   };
 
-  useEffect(() => {
-    const batch = items.filter((item) => item.item_id == searchId && item.is_active)
-    .sort((a, b) => {
-      const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return dateA - dateB;
-    }
-  );
-    setBatch(batch[0]);
-  }, [searchValue]);
-
-  console.log("The batch in the inventory sales", batch);
+  // useEffect(() => {
+  //   const batch = items.filter((item) => item.item_id == searchId && item.is_active)
+  //   .sort((a, b) => {
+  //     const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+  //     const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+  //     return dateA - dateB;
+  //   }
+  // );
+  //   setBatch(batch[0]);
+  // }, [searchValue]);
 
   if (!isOpen) return null;
 
@@ -92,6 +94,9 @@ const InventorySalesAddModal: React.FC<AddItemModalProps> = ({
             setSearchValue={setSearchValue}
             searchId={searchId}
             setSearchId={setSearchId}
+            outline={false}
+            setOutline={() => {}}
+            onSearch={() => {}}
           />
 
           {batch && <div className="flex justify-between text-sm text-gray-400">

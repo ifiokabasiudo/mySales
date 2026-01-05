@@ -116,9 +116,13 @@ export type PendingSync = {
     | "expenses";
   action: "insert" | "update" | "soft_delete" | "hard_delete";
   payload: any; // full row data (including local ids)
+  permanently_failed?: boolean;
+  sync_status?: string | null;
+  rejection_reason?: string | null;
   created_at?: string;
   tries?: number;
   last_error?: string | null;
+  paused_until?: number | null;
 };
 
 class MySalesDB extends Dexie {
@@ -132,10 +136,10 @@ class MySalesDB extends Dexie {
 
   constructor() {
     super("mySalesDB");
-    this.version(3).stores({
+    this.version(4).stores({
       quick_sales: "id, total_amount, reconciled_amount, status, created_at",
       inventory_items: "id, name, stock_quantity, created_at",
-      inventory_sales: "id, item_id, created_at",
+      inventory_sales: "id, item_id, batch_id, inventory_sales_id, soft_deleted, created_at",
       reconciliation_links:
         "id, quick_sales_id, inventory_sales_id, created_at",
       inventory_batches: "id, item_id, is_active, created_at",

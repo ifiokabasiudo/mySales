@@ -8,11 +8,17 @@ export default function SearchBar({
   setSearchValue,
   searchId,
   setSearchId,
+  outline, 
+  setOutline,
+  onSearch
 }: {
   searchValue: string;
   setSearchValue: (value: string) => void;
   searchId: string;
   setSearchId: (value: string) => void;
+  outline: boolean;
+  setOutline: React.Dispatch<React.SetStateAction<boolean>>;
+  onSearch: () => void
 }) {
   const items = InventoryItems();
 
@@ -56,7 +62,8 @@ export default function SearchBar({
         type="text"
         value={searchValue}
         placeholder="Type the item..."
-        className="w-full px-4 py-2 border border-slate-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className={`w-full px-4 py-2 border border-slate-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${outline ? 'outline-3 outline-cyan-500' : ''}`}
+        onClick={() => {setOutline(false); onSearch;}}
         onChange={(e) => handleSearch(e)}
         onFocus={() => setActiveSearch(items)}
       />

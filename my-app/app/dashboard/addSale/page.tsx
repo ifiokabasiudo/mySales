@@ -13,7 +13,7 @@ export default function AddSale() {
     <>
       {/* <MainSync /> */}
       <div
-        className={`flex flex-col bg-[#ECEFF0] min-h-screen tracking-wider ${inter.className}`}
+        className={`flex flex-col bg-[#ECEFF0] min-h-screen tracking-wider px-5 ${inter.className}`}
       >
         <Navbar />
         <Suspense fallback={<div>Loading...</div>}><NewSale /></Suspense>

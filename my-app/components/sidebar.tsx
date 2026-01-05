@@ -113,6 +113,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
         alignment="center"
         isIntercepting={true}
         showCancelBtnINSmallDevice={true}
+        setTable={() => {}}
       >
         <div className="">
             Are you sure you want to sign out?

@@ -55,9 +55,13 @@ async function recomputeInventoryItemOffline(itemId: string) {
     // .filter((b) => b.is_active)
     .reduce((s, b) => s + b.quantity, 0);
 
+    console.log("Batches: ", allBatches);
+
   const price = allBatches.sort((a, b) =>
     (a.created_at ?? "").localeCompare(b.created_at ?? "")
   )[0]?.unit_cost;
+
+  console.log("DB tables:", db.tables.map(t => t.name));
 
   const item = await db.inventory_items.get(itemId);
   if (!item) return;
@@ -176,114 +180,6 @@ export async function offlineInsert<T extends Record<string, any>>(
       break;
     }
 
-    // case "inventory_sales": {
-    //   const sale = prepare as unknown as InventorySale;
-
-    //   let remainingQty = sale.quantity;
-
-    //   // 1️⃣ Get all active batches FIFO
-    //   const batches = await db.inventory_batches
-    //     .where("item_id")
-    //     .equals(sale.item_id)
-    //     .and((b) => b.is_active && !b.soft_deleted)
-    //     .sortBy("created_at");
-
-    //   if (batches.length === 0) {
-    //     throw new Error("No active batch");
-    //   }
-
-    //   // 2️⃣ Ensure enough total stock
-    //   const totalAvailable = batches.reduce((s, b) => s + b.quantity, 0);
-    //   if (totalAvailable < remainingQty) {
-    //     throw new Error("Insufficient batch stock");
-    //   }
-
-    //   let firstBatchId: string | null = null;
-
-    //   // 3️⃣ FIFO deduction across batches
-    //   for (const batch of batches) {
-    //     if (remainingQty <= 0) break;
-
-    //     const deduct = Math.min(batch.quantity, remainingQty);
-
-    //     batch.quantity -= deduct;
-    //     batch.is_active = batch.quantity > 0;
-
-    //     if (!firstBatchId) {
-    //       firstBatchId = batch.id; // link sale to first consumed batch
-    //     }
-
-    //     remainingQty -= deduct;
-
-    //     await db.inventory_batches.put(batch);
-    //   }
-
-    //   if (remainingQty > 0) {
-    //     throw new Error("FIFO deduction failed");
-    //   }
-
-    //   // 4️⃣ Finalize sale
-    //   sale.batch_id = firstBatchId!;
-    //   sale.total_amount = sale.quantity * sale.selling_price;
-
-    //   await db.inventory_sales.put(sale);
-
-    //   // 5️⃣ Recompute cached inventory item
-    //   await recomputeInventoryItemOffline(sale.item_id);
-
-    //   // CREATE COGS EXPENSE
-    //   // const batch = await db.inventory_batches.get(sale.batch_id!);
-    //   // if (!batch) throw new Error("Batch not found for expense");
-
-    //   // const expense = {
-    //   //   id: crypto.randomUUID(),
-    //   //   phone: sale.phone,
-    //   //   inventory_sales_id: sale.id,
-    //   //   type: "cogs",
-    //   //   category: "inventory",
-    //   //   quantity: sale.quantity,
-    //   //   unit_cost: batch.unit_cost,
-    //   //   total_cost: sale.quantity * batch.unit_cost,
-    //   //   created_at: now,
-    //   //   updated_at: now,
-    //   // };
-    //   // 🔒 Snapshot batch data at sale time
-    //   sale.batch_unit_cost = batches[0].unit_cost;
-    //   sale.batch_quantity_at_sale = sale.quantity;
-
-    //   // Save sale first
-    //   await db.inventory_sales.put(sale);
-
-    //   // ✅ Create immutable COGS expense from snapshot
-    //   const expense: Expenses = {
-    //     id: crypto.randomUUID(),
-    //     phone: sale.phone,
-    //     inventory_sales_id: sale.id,
-    //     type: "cogs",
-    //     category: "inventory",
-    //     quantity: sale.quantity,
-    //     unit_cost: sale.batch_unit_cost,
-    //     total_cost: sale.quantity * sale.batch_unit_cost,
-    //     created_at: now,
-    //     updated_at: now,
-    //   };
-
-    //   await db.expenses.put(expense);
-
-    //   // await db.expenses.put(expense);
-
-    //   // queue expense sync // This extra block only exists only exists because there is no trigger for this in supabase.
-    //   await db.pending_sync.add({
-    //     table: "expenses",
-    //     action: "insert",
-    //     payload: expense,
-    //     created_at: now,
-    //     tries: 0,
-    //   } as PendingSync);
-
-    //   break;
-    // }
-
     case "reconciliation_links": {
       const inventorySale = await db.inventory_sales.get(
         prepare.inventory_sales_id
@@ -330,6 +226,14 @@ export async function offlineInsert<T extends Record<string, any>>(
 
       await db.inventory_items.put(item);
 
+      await db.pending_sync.add({
+        table: "inventory_items",
+        action: "insert",
+        payload: item,
+        created_at: now,
+        tries: 0,
+      } as PendingSync);
+
       if (!existingItem && item.stock_quantity && item.stock_quantity > 0) {
         const batchId = crypto.randomUUID();
 
@@ -344,6 +248,7 @@ export async function offlineInsert<T extends Record<string, any>>(
           created_at: now,
           updated_at: now,
         };
+        
 
         await db.inventory_batches.put(batch);
 
@@ -362,13 +267,15 @@ export async function offlineInsert<T extends Record<string, any>>(
   console.log("This is the prepare: ", prepare);
 
   // queue for sync
-  await db.pending_sync.add({
-    table,
-    action: "insert",
-    payload: prepare,
-    created_at: now,
-    tries: 0,
-  } as PendingSync);
+  if (table != "inventory_items") {
+    await db.pending_sync.add({
+      table,
+      action: "insert",
+      payload: prepare,
+      created_at: now,
+      tries: 0,
+    } as PendingSync);
+  }
 
   return prepare;
 }
@@ -585,10 +492,14 @@ export async function offlineSoftDelete(
       const batchItem = await db.inventory_batches.get(id);
       if (!batchItem) throw new Error("Batch not found");
 
+      console.log("Actually got to this point")
+
       const linkedSales = await db.inventory_sales
         .where("batch_id")
         .equals(id)
         .toArray();
+
+      console.log("Didn't get here")
 
       if (linkedSales.some((s) => !s.soft_deleted)) {
         throw new Error(
@@ -743,3 +654,111 @@ export async function offlineSoftDelete(
     tries: 0,
   } as PendingSync);
 }
+
+// case "inventory_sales": {
+//   const sale = prepare as unknown as InventorySale;
+
+//   let remainingQty = sale.quantity;
+
+//   // 1️⃣ Get all active batches FIFO
+//   const batches = await db.inventory_batches
+//     .where("item_id")
+//     .equals(sale.item_id)
+//     .and((b) => b.is_active && !b.soft_deleted)
+//     .sortBy("created_at");
+
+//   if (batches.length === 0) {
+//     throw new Error("No active batch");
+//   }
+
+//   // 2️⃣ Ensure enough total stock
+//   const totalAvailable = batches.reduce((s, b) => s + b.quantity, 0);
+//   if (totalAvailable < remainingQty) {
+//     throw new Error("Insufficient batch stock");
+//   }
+
+//   let firstBatchId: string | null = null;
+
+//   // 3️⃣ FIFO deduction across batches
+//   for (const batch of batches) {
+//     if (remainingQty <= 0) break;
+
+//     const deduct = Math.min(batch.quantity, remainingQty);
+
+//     batch.quantity -= deduct;
+//     batch.is_active = batch.quantity > 0;
+
+//     if (!firstBatchId) {
+//       firstBatchId = batch.id; // link sale to first consumed batch
+//     }
+
+//     remainingQty -= deduct;
+
+//     await db.inventory_batches.put(batch);
+//   }
+
+//   if (remainingQty > 0) {
+//     throw new Error("FIFO deduction failed");
+//   }
+
+//   // 4️⃣ Finalize sale
+//   sale.batch_id = firstBatchId!;
+//   sale.total_amount = sale.quantity * sale.selling_price;
+
+//   await db.inventory_sales.put(sale);
+
+//   // 5️⃣ Recompute cached inventory item
+//   await recomputeInventoryItemOffline(sale.item_id);
+
+//   // CREATE COGS EXPENSE
+//   // const batch = await db.inventory_batches.get(sale.batch_id!);
+//   // if (!batch) throw new Error("Batch not found for expense");
+
+//   // const expense = {
+//   //   id: crypto.randomUUID(),
+//   //   phone: sale.phone,
+//   //   inventory_sales_id: sale.id,
+//   //   type: "cogs",
+//   //   category: "inventory",
+//   //   quantity: sale.quantity,
+//   //   unit_cost: batch.unit_cost,
+//   //   total_cost: sale.quantity * batch.unit_cost,
+//   //   created_at: now,
+//   //   updated_at: now,
+//   // };
+//   // 🔒 Snapshot batch data at sale time
+//   sale.batch_unit_cost = batches[0].unit_cost;
+//   sale.batch_quantity_at_sale = sale.quantity;
+
+//   // Save sale first
+//   await db.inventory_sales.put(sale);
+
+//   // ✅ Create immutable COGS expense from snapshot
+//   const expense: Expenses = {
+//     id: crypto.randomUUID(),
+//     phone: sale.phone,
+//     inventory_sales_id: sale.id,
+//     type: "cogs",
+//     category: "inventory",
+//     quantity: sale.quantity,
+//     unit_cost: sale.batch_unit_cost,
+//     total_cost: sale.quantity * sale.batch_unit_cost,
+//     created_at: now,
+//     updated_at: now,
+//   };
+
+//   await db.expenses.put(expense);
+
+//   // await db.expenses.put(expense);
+
+//   // queue expense sync // This extra block only exists only exists because there is no trigger for this in supabase.
+//   await db.pending_sync.add({
+//     table: "expenses",
+//     action: "insert",
+//     payload: expense,
+//     created_at: now,
+//     tries: 0,
+//   } as PendingSync);
+
+//   break;
+// }

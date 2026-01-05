@@ -8,10 +8,11 @@ export function InventoryItems() {
   const dataForTable = items.map(item => ({
     id: item.id,
     name: item.name,
+    stock_quantity: item.stock_quantity,
     soft_deleted: item.soft_deleted,
   }));
 
-  const finalData = dataForTable.filter(row => !row.soft_deleted);
+  const finalData = dataForTable.filter(row => !row.soft_deleted && row.stock_quantity);
 
   console.log("These are the inventory items: ", finalData)
 

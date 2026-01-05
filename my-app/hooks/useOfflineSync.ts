@@ -69,9 +69,10 @@ export default function useOfflineSync() {
 
     setIsSyncing(true);
     abortRef.current.aborted = false;
+    
 
     try {
-      await syncPending({ signal: abortRef.current });
+      await syncPending({ signal: abortRef.current, force: true });
     } finally {
       setIsSyncing(false);
     }

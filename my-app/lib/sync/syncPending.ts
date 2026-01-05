@@ -1,7 +1,9 @@
-
 // lib/sync/syncPending.ts
+// "use client";
+
 import { db } from "../db";
 import { supabase } from "../supabase/client";
+import { classifySyncError } from "./classifySyncError";
 
 const MAX_RETRIES = 5;
 
@@ -11,15 +13,21 @@ type AbortSignalLike = {
 
 export async function syncPending({
   signal,
+  force = false,
 }: {
   signal?: AbortSignalLike;
+  force?: boolean;
 } = {}) {
   // Always process in order
   const items = await db.pending_sync.orderBy("created_at").toArray();
 
   for (const item of items) {
     if (signal?.aborted) break;
-    if ((item.tries ?? 0) >= MAX_RETRIES) continue;
+    if (item.permanently_failed) continue;
+
+    if (!force && item.paused_until && Date.now() < item.paused_until) {
+      continue;
+    }
 
     try {
       const { table, action, payload } = item;
@@ -104,20 +112,46 @@ export async function syncPending({
       console.warn("Unknown sync action:", action, item);
       await db.pending_sync.delete(item.local_id!);
     } catch (err: any) {
-      // 🧯 Safe failure handling (no infinite loops)
-      const nextTries = (item.tries ?? 0) + 1;
+      const classification = classifySyncError(err);
 
-      await db.pending_sync.update(item.local_id!, {
-        tries: nextTries,
-        last_error: err?.message ?? String(err),
-      });
-
-      if (nextTries >= MAX_RETRIES) {
-        console.error("⛔ Max retries reached for sync item:", item);
+      if (classification.type === "permanent") {
+        await db.pending_sync.update(item.local_id!, {
+          permanently_failed: true,
+          last_error: classification.reason,
+        });
+        continue;
       }
 
-      // ❗ Do NOT throw — move to next item
+      // transient error → retry
+      await db.pending_sync.update(item.local_id!, {
+        tries: (item.tries ?? 0) + 1,
+        last_error: err.message,
+        paused_until:
+          (item.tries ?? 0) + 1 >= 3
+            ? Date.now() + 10 * 60 * 1000 // 5 minutes
+            : null,
+      });
+
+      if ((item.tries ?? 0) + 1 >= MAX_RETRIES) {
+        console.error("Max retries reached for sync item: ", item, " currently at ", item.tries, " tries.");
+      }
+
       continue;
+
+      // 🧯 Safe failure handling (no infinite loops)
+      //   const nextTries = (item.tries ?? 0) + 1;
+
+      //   await db.pending_sync.update(item.local_id!, {
+      //     tries: nextTries,
+      //     last_error: err?.message ?? String(err),
+      //   });
+
+      //   if (nextTries >= MAX_RETRIES) {
+      //     console.error("⛔ Max retries reached for sync item:", item);
+      //   }
+
+      //   // ❗ Do NOT throw — move to next item
+      //   continue;
     }
   }
 }

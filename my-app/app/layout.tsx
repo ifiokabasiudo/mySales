@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SyncBoundary from "@/components/sync-boundary";
-// import AuthWrapper from "./auth-wrapper"; 
+import { ToastContainer } from "react-toastify";
+// import AuthWrapper from "./auth-wrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,14 +25,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
-
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SyncBoundary />
+        <ToastContainer />
         {children}
       </body>
     </html>
