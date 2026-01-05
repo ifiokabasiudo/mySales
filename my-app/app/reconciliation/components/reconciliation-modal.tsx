@@ -159,6 +159,9 @@ export default function ReconciliationModal({
             setSearchValue={setSearchValue}
             searchId={searchId}
             setSearchId={setSearchId}
+            outline //this is a necessary check ///////////////////////////////////////////////////////////
+            setOutline={() => {}}
+            onSearch={() => {}}
           />
           {price > 0 && qty > 0 && (
             <div className="mt-2 text-sm font-semibold text-green-700">
