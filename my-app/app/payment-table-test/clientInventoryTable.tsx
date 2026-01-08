@@ -19,7 +19,7 @@ export default function ClientInventoryTable() {
     updated_at: item.updated_at ?? item.created_at,
   }));
 
-  const finalData = dataForTable.filter(row => !row.soft_deleted && row.stock_quantity > 0);
+  const finalData = dataForTable.filter(row => !row.soft_deleted);
 
   console.log("These are the items: ", items)
 

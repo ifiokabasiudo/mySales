@@ -92,7 +92,9 @@ export default function EditModal({
         );
 
         await manualSync();
-
+        
+        setMode("batch");        
+        setBatchId("");
         setOpen(false);
       },
       { loading: "Deleting...", success: "Successfully deleted" }

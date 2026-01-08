@@ -519,13 +519,13 @@ export default function NewSale() {
           )}
         </div>
         {cart.length > 0 && mode == "inventory" && (
-          <div className="border rounded-lg p-3 space-y-3 bg-gray-50 w-full">
-            <h3 className="font-semibold text-lg">Added Items</h3>
+          <div className="border border-gray-300 rounded-lg py-3 bg-gray-50 w-full">
+            <h3 className="font-semibold text-lg px-4">Added Items</h3>
 
             {cart.map((cartItem, index) => (
               <div
                 key={index}
-                className="flex justify-between items-center border p-2 rounded-md"
+                className={`flex justify-between items-center ${cart.length - 1 != index ? "border-b border-gray-300" : "pb-0"} py-2 px-4`}
               >
                 <div>
                   <p className="font-medium">{cartItem.item}</p>
@@ -537,14 +537,14 @@ export default function NewSale() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleEdit(index)}
-                    className="px-3 py-1 text-sm border rounded text-blue-600"
+                    className="px-3 py-1 text-sm border rounded text-white bg-[#1C8220]"
                   >
                     Edit
                   </button>
 
                   <button
                     onClick={() => handleDelete(index)}
-                    className="px-3 py-1 text-sm border rounded text-red-600"
+                    className="px-3 py-1 text-sm border rounded text-white bg-rose-600"
                   >
                     Delete
                   </button>

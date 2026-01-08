@@ -311,14 +311,14 @@ export default function Expenses() {
         </form>
       </div>
       {expenses.length > 0 && (
-        <div className="w-full bg-white rounded-md p-4 mt-4">
-          <h2 className="font-semibold mb-3">Added Expenses</h2>
+        <div className="w-full bg-white rounded-lg border border-gray-300 py-4 mt-4">
+          <h2 className="font-semibold mb-3 px-4">Added Expenses</h2>
 
           <div className="flex flex-col gap-3">
             {expenses.map((exp, index) => (
               <div
                 key={index}
-                className="flex justify-between items-center border-b pb-2"
+                className={`flex justify-between items-center py-2 px-4 ${expenses.length - 1 != index ? "border-b border-gray-300" : "pb-0"}`}
               >
                 <div>
                   <p className="font-medium">{exp.category}</p>
@@ -333,15 +333,15 @@ export default function Expenses() {
                     disabled={isLoading}
                     type="button"
                     onClick={() => handleEdit(index)}
-                    className={`text-sm text-[#1C8220] underline ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
+                    className={`text-sm py-1 px-3 border rounded text-white bg-[#1C8220] ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
                   >
-                    {isLoading ? "Editing..." : "Edit"}
+                    Edit
                   </button>
                   <button
                     disabled={isLoading}
                     type="button"
                     onClick={() => {setShowModal(true); setChosen(index)}}
-                    className={`text-sm text-red-600 underline ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
+                    className={`text-sm py-1 px-3 border rounded text-white bg-rose-600 ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
                   >
                     Remove
                   </button>

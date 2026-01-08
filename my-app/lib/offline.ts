@@ -46,13 +46,16 @@ async function recomputeInventoryItemOffline(itemId: string) {
     // .filter((b) => b.is_active)
     .reduce((s, b) => s + b.quantity, 0);
 
-    console.log("Batches: ", allBatches);
+  console.log("Batches: ", allBatches);
 
   const price = allBatches.sort((a, b) =>
     (a.created_at ?? "").localeCompare(b.created_at ?? "")
   )[0]?.unit_cost;
 
-  console.log("DB tables:", db.tables.map(t => t.name));
+  console.log(
+    "DB tables:",
+    db.tables.map((t) => t.name)
+  );
 
   const item = await db.inventory_items.get(itemId);
   if (!item) return;
@@ -239,7 +242,6 @@ export async function offlineInsert<T extends Record<string, any>>(
           created_at: now,
           updated_at: now,
         };
-        
 
         await db.inventory_batches.put(batch);
 
@@ -305,7 +307,7 @@ export async function offlineUpdate<T extends Record<string, any>>(
       const existing = await db.inventory_batches.get(row.id);
       if (!existing) throw new Error("Batch not found");
 
-      console.log("This is the existing in the inventory batch: ", existing)
+      console.log("This is the existing in the inventory batch: ", existing);
 
       // 🔒 Prevent cost edits if batch has sales
       if (row.unit_cost !== undefined && row.unit_cost !== existing.unit_cost) {
@@ -326,7 +328,7 @@ export async function offlineUpdate<T extends Record<string, any>>(
         updated_at: now,
       });
 
-      console.log("This is the batch update data: ", updated)
+      console.log("This is the batch update data: ", updated);
 
       await db.inventory_batches.put(updated);
       await recomputeInventoryItemOffline(updated.item_id);
@@ -487,14 +489,14 @@ export async function offlineSoftDelete(
       const batchItem = await db.inventory_batches.get(id);
       if (!batchItem) throw new Error("Batch not found");
 
-      console.log("Actually got to this point")
+      console.log("Actually got to this point");
 
       const linkedSales = await db.inventory_sales
         .where("batch_id")
         .equals(id)
         .toArray();
 
-      console.log("Didn't get here")
+      console.log("Didn't get here");
 
       if (linkedSales.some((s) => !s.soft_deleted)) {
         throw new Error(
@@ -511,7 +513,47 @@ export async function offlineSoftDelete(
         updated_at: now,
       });
 
-      await recomputeInventoryItemOffline(batchItem.item_id);
+      await db.pending_sync.add({
+        table: "inventory_batches",
+        action: "soft_delete",
+        payload: { id, reason },
+        created_at: now,
+        tries: 0,
+      } as PendingSync);
+
+      const remainingBatches = await db.inventory_batches
+        .where("item_id")
+        .equals(batchItem.item_id)
+        .and((b) => !b.soft_deleted)
+        .count();
+
+      if (remainingBatches === 0) {
+        // 🔥 Last batch deleted → soft delete inventory item
+        const item = await db.inventory_items.get(batchItem.item_id);
+
+        if (item && !item.soft_deleted) {
+          await db.inventory_items.put({
+            ...item,
+            soft_deleted: true,
+            deleted_reason: "All batches deleted",
+            deleted_at: now,
+            updated_at: now,
+          });
+
+          await db.pending_sync.add({
+            table: "inventory_items",
+            action: "soft_delete",
+            payload: { id: item.id, reason: "All batches deleted" },
+            created_at: now,
+            tries: 0,
+          } as PendingSync);
+        }
+      } else {
+        // Otherwise just recompute stock
+        await recomputeInventoryItemOffline(batchItem.item_id);
+      }
+
+      // await recomputeInventoryItemOffline(batchItem.item_id);
       break;
     }
 
@@ -641,13 +683,15 @@ export async function offlineSoftDelete(
   }
 
   // queue for sync
-  await db.pending_sync.add({
-    table,
-    action: "soft_delete",
-    payload: { id, reason },
-    created_at: now,
-    tries: 0,
-  } as PendingSync);
+  if (table != "inventory_batches") {
+    await db.pending_sync.add({
+      table,
+      action: "soft_delete",
+      payload: { id, reason },
+      created_at: now,
+      tries: 0,
+    } as PendingSync);
+  }
 }
 
 // case "inventory_sales": {

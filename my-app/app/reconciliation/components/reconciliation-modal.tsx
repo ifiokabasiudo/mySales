@@ -53,6 +53,8 @@ export default function ReconciliationModal({
   const [quantity, setQuantity] = useState("");
   const [batch, setBatch] = useState<Batch | null>(null);
   const [outline, setOutline] = useState(false);
+  const [paymentType, setPaymentType] = useState("Cash");
+  const options = ["Cash", "POS", "Transfer"];
   // const [table, setTable] = useState<TableData>(null);
 
   const { manualSync } = useOfflineSync();
@@ -118,7 +120,7 @@ export default function ReconciliationModal({
           quantity: tQuantity,
           selling_price: value,
           total_amount: tQuantity * value,
-          // payment_type: paymentType,
+          payment_type: paymentType,
         });
 
         if (!inventorySale) {
@@ -187,7 +189,7 @@ export default function ReconciliationModal({
             </div>
           )}
 
-          <div className="mt-4">
+          <div className="flex flex-col gap-2 mt-4">
             <SearchBar
               searchValue={searchValue}
               setSearchValue={setSearchValue}
@@ -224,6 +226,34 @@ export default function ReconciliationModal({
               className="w-full border rounded-lg p-3"
               placeholder="e.g. 1"
             />
+            <div>
+                <p className="text-sm mb-1 text-slate-500">Payment Type</p>
+                {options.map((item) => (
+                  <label
+                    key={item}
+                    className="flex items-center gap-4 cursor-pointer w-fit"
+                    onClick={() => setPaymentType(item)}
+                  >
+                    <div className="flex gap-3 items-center">
+                      <div
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center
+            ${
+              paymentType === item
+                ? "border-[#1C8220] bg-[#1C8220]"
+                : "border-black"
+            }
+          `}
+                      >
+                        {paymentType === item && (
+                          <div className="w-2 h-2 bg-white rounded" />
+                        )}
+                      </div>
+
+                      <span className="text-lg text-black">{item}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
           </div>
 
           <div className="flex gap-3 mt-5">
