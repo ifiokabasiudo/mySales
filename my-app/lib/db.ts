@@ -1,4 +1,6 @@
 // lib/db.ts
+"use client"
+
 import Dexie from "dexie";
 
 export type QuickSale = {
