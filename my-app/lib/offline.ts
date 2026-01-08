@@ -305,6 +305,8 @@ export async function offlineUpdate<T extends Record<string, any>>(
       const existing = await db.inventory_batches.get(row.id);
       if (!existing) throw new Error("Batch not found");
 
+      console.log("This is the existing in the inventory batch: ", existing)
+
       // 🔒 Prevent cost edits if batch has sales
       if (row.unit_cost !== undefined && row.unit_cost !== existing.unit_cost) {
         const salesCount = await db.inventory_sales
@@ -318,11 +320,13 @@ export async function offlineUpdate<T extends Record<string, any>>(
         }
       }
 
-      const updated = mergeUpdate(existing, row, {
+      updated = mergeUpdate(existing, row, {
         is_active: row.quantity > 0,
         soft_deleted: false,
         updated_at: now,
       });
+
+      console.log("This is the batch update data: ", updated)
 
       await db.inventory_batches.put(updated);
       await recomputeInventoryItemOffline(updated.item_id);

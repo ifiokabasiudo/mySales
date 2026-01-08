@@ -57,6 +57,7 @@ import { offlineSoftDelete } from "@/lib/offline";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import { db } from "@/lib/db";
 import { BatchItems } from "@/app/inventory/constants/batch_items";
+import { useSafeAction } from "@/hooks/useSafeAction";
 
 export default function EditModal({
   open,
@@ -72,22 +73,30 @@ export default function EditModal({
 
   const { manualSync } = useOfflineSync();
 
+  const { run, isLoading } = useSafeAction();
+
   const batches = BatchItems().filter((b) => b.item_id === data.id);
   // const activeBatch = batches.find((b) => b.id === batchId);
 
   async function handleDelete() {
-    if (!batchId) {
-      alert("No batch selected");
-      return;
-    }
+    await run(
+      async () => {
+        if (!batchId) {
+          throw new Error ("No batch selected");
+        }
 
-    await offlineSoftDelete("inventory_batches", batchId, "User deleted batch");
+        await offlineSoftDelete(
+          "inventory_batches",
+          batchId,
+          "User deleted batch"
+        );
 
-    await new Promise((res) => setTimeout(res, 0));
+        await manualSync();
 
-    await manualSync();
-
-    setOpen(false);
+        setOpen(false);
+      },
+      { loading: "Deleting...", success: "Successfully deleted" }
+    );
   }
 
   const resetAndClose = () => {
@@ -122,8 +131,9 @@ export default function EditModal({
                 </div>
 
                 <Button
+                  disabled={isLoading}
                   variant="destructive"
-                  className="bg-rose-600 hover:cursor-pointer"
+                  className={`bg-rose-600 hover:cursor-pointer ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
                   onClick={() => {
                     setBatchId(b.id);
                     setMode("delete");
@@ -142,13 +152,14 @@ export default function EditModal({
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete this batch of {" "}
+            Are you sure you want to delete this batch of{" "}
             <span className="font-semibold">{data.name}</span>? This action
             cannot be undone.
           </p>
 
           <div className="flex justify-end gap-3 mt-6">
             <Button
+              disabled={isLoading}
               variant="outline"
               className="hover:cursor-pointer"
               onClick={() => {
@@ -159,9 +170,10 @@ export default function EditModal({
               Back
             </Button>
 
-            <Button
+            <Button 
+              disabled={isLoading}
               variant="destructive"
-              className="bg-rose-600 hover:cursor-pointer"
+              className={`bg-rose-600 hover:cursor-pointer ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
               onClick={handleDelete}
             >
               Delete

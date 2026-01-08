@@ -14,6 +14,7 @@ import { offlineUpdate } from "@/lib/offline";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import { db } from "@/lib/db";
 import { BatchItems } from "@/app/inventory/constants/batch_items";
+import { useSafeAction } from "@/hooks/useSafeAction";
 
 export default function EditModal({
   open,
@@ -32,6 +33,8 @@ export default function EditModal({
 
   const { manualSync } = useOfflineSync();
 
+  const { run, isLoading } = useSafeAction();
+
   const batches = BatchItems().filter((b) => b.item_id === data.id);
   const activeBatch = batches.find((b) => b.id === batchId);
 
@@ -47,32 +50,38 @@ export default function EditModal({
   }, [activeBatch]);
 
   const handleSave = async () => {
-    if (!batchId) {
-      alert("No batch selected");
-      return;
-    }
+    await run(
+      async () => {
+        if (!batchId) {
+          throw new Error("No batch selected");
+        }
 
-    const quantity = Number(batchQuantity);
-    const unitCost = Number(batchUnitCost);
+        const quantity = Number(batchQuantity);
+        const unitCost = Number(batchUnitCost);
 
-    if (quantity < 0 || unitCost < 0) {
-      alert("Values cannot be negative");
-      return;
-    }
+        if (quantity <= 0) {
+          throw new Error("Enter a valid quantity");
+        }
+        if (unitCost <= 0) {
+          throw new Error("Enter a valid price");
+        }
 
-    await offlineUpdate("inventory_batches", {
-      id: batchId,
-      item_id: data.id,
-      quantity,
-      unit_cost: unitCost,
-      updated_at: new Date().toISOString(),
-    });
+        await offlineUpdate("inventory_batches", {
+          id: batchId,
+          item_id: data.id,
+          quantity,
+          unit_cost: unitCost,
+          // updated_at: new Date().toISOString(),
+        });
 
-    console.log("Pending sync:", await db.pending_sync.toArray());
+        console.log("Pending sync:", await db.pending_sync.toArray());
 
-    await manualSync();
+        await manualSync();
 
-    resetAndClose();
+        resetAndClose();
+      },
+      { loading: "Saving...", success: "Successfully saved" }
+    );
   };
 
   const resetAndClose = () => {
@@ -110,7 +119,12 @@ export default function EditModal({
                 </div>
 
                 <Button
-                  className="bg-gray-600 text-white hover:cursor-pointer"
+                  disabled={isLoading}
+                  className={`bg-gray-600 text-white hover:cursor-pointer ${
+                    isLoading
+                      ? "opacity-50 cursor-not-allowed animate-pulse"
+                      : ""
+                  }`}
                   onClick={() => {
                     setBatchId(b.id);
                     setMode("edit");
@@ -132,6 +146,7 @@ export default function EditModal({
             <div>
               <label>Quantity</label>
               <Input
+                disabled={isLoading}
                 type="number"
                 value={batchQuantity}
                 onChange={(e) => setBatchQuantity(e.target.value)}
@@ -141,6 +156,7 @@ export default function EditModal({
             <div>
               <label>Unit Cost</label>
               <Input
+                disabled={isLoading}
                 type="number"
                 value={batchUnitCost}
                 onChange={(e) => setBatchUnitCost(e.target.value)}
@@ -160,10 +176,15 @@ export default function EditModal({
               </span>
 
               <Button
-                className="bg-gray-600 text-white hover:cursor-pointer"
+                disabled={isLoading}
+                className={`bg-gray-600 text-white hover:cursor-pointer ${
+                    isLoading
+                      ? "opacity-50 cursor-not-allowed animate-pulse"
+                      : ""
+                  }`}
                 onClick={handleSave}
               >
-                Save
+                {isLoading ? "Saving..." : "Save"}
               </Button>
             </div>
           </div>
