@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import MainSync from "@/hooks/mainSync";
 import Sidebar from "@/components/sidebar";
 import { useSafeAction } from "@/hooks/useSafeAction";
-import SyncBoundary from "./sync-boundary";
 
 export default function Navbar() {
   const router = useRouter();
@@ -37,7 +36,6 @@ export default function Navbar() {
 
   return (
     <>
-      <SyncBoundary />
       {/* <MainSync /> */}
       <nav className="w-full sticky z-50 bg-[#ECEFF0] flex items-center justify-between">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
