@@ -28,6 +28,8 @@ export async function syncPending({
     "pending_sync"
   );
 
+  console.log("The pending items: ", items)
+
   for (const item of items) {
     if (signal?.aborted) break;
     if (item.permanently_failed) continue;
