@@ -1,32 +1,31 @@
-"use client"
+"use client";
 
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import RowActionsQuickSale from "./rowActions/rowActionsQuickSale"
-import { formatDate } from "@/lib/isoToNormalDate"; 
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import RowActionsQuickSale from "./rowActions/rowActionsQuickSale";
+import { formatDate } from "@/lib/isoToNormalDate";
+import { getQSaleNumber } from "@/lib/idGenerator";
 
 export type QuickSales = {
-    id: string;
-    phone: string | undefined;
-    reconciled_amount: number;
-    status: "pending" | "partial" | "completed";
-    note: string | null;
-    mode: string;
-    soft_deleted: boolean | undefined;
-    total_amount: number;
-    updated_at: string | undefined;
-}
+  id: string;
+  phone: string | undefined;
+  reconciled_amount: number;
+  status: "pending" | "partial" | "completed";
+  note: string | null;
+  mode: string;
+  soft_deleted: boolean | undefined;
+  total_amount: number;
+  updated_at: string | undefined;
+};
 
 export const quickSalesColumns: ColumnDef<QuickSales>[] = [
-{
+  {
     id: "actions",
     cell: ({ row }) => {
-      const data = row.original
+      const data = row.original;
 
-      return (
-        <RowActionsQuickSale data={data}/>
-      )
+      return <RowActionsQuickSale data={data} />;
     },
   },
   {
@@ -39,9 +38,14 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           ID
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
+    },
+    cell: ({ row }) => {
+      const id: any = row.getValue("id");
+      const date: any = row.getValue("updated_at");
+      return <div className="font-medium">{getQSaleNumber(id, date)}</div>;
     },
   },
   {
@@ -54,20 +58,20 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Total Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
-      const total_amount = parseFloat(row.getValue("total_amount"))
+      const total_amount = parseFloat(row.getValue("total_amount"));
       const formatted = new Intl.NumberFormat("en-NG", {
         style: "currency",
         currency: "NGN",
-      }).format(total_amount)
+      }).format(total_amount);
 
-      return <div className="text-right font-medium">{formatted}</div>
+      return <div className="text-right font-medium">{formatted}</div>;
     },
   },
   {
@@ -80,21 +84,21 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Allocated Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     // header: () => <div >Unit Price</div>,
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
-      const reconciled_amount = parseFloat(row.getValue("reconciled_amount"))
+      const reconciled_amount = parseFloat(row.getValue("reconciled_amount"));
       const formatted = new Intl.NumberFormat("en-NG", {
         style: "currency",
         currency: "NGN",
-      }).format(reconciled_amount)
+      }).format(reconciled_amount);
 
-      return <div className="text-right font-medium">{formatted}</div>
+      return <div className="text-right font-medium">{formatted}</div>;
     },
   },
   {
@@ -107,9 +111,9 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Side Note
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
   },
   {
@@ -122,9 +126,9 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Mode of Transfer
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
   },
   {
@@ -137,9 +141,9 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
   },
   {
@@ -153,15 +157,17 @@ export const quickSalesColumns: ColumnDef<QuickSales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
-      const updated_at: any = row.getValue("updated_at")
-      return <div className="text-right font-medium">{formatDate(updated_at)}</div>
+      const updated_at: any = row.getValue("updated_at");
+      return (
+        <div className="text-right font-medium">{formatDate(updated_at)}</div>
+      );
     },
   },
-]
+];

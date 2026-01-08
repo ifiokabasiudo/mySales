@@ -303,6 +303,7 @@ export default function NewSale() {
             />
 
             <button
+              disabled={isLoading}
               className={`flex-1 py-2 font-semibold hover:cursor-pointer z-10 ${
                 mode !== "quick" ? "text-[#ECEFF0]" : `text-[#1C8220]`
               } transition-colors duration-300`}
@@ -312,6 +313,7 @@ export default function NewSale() {
             </button>
 
             <button
+              disabled={isLoading}
               className={`flex-1 py-2 font-semibold z-10 hover:cursor-pointer ${
                 mode !== "inventory" ? "text-[#ECEFF0]" : `text-[#1C8220]`
               } transition-colors duration-300`}

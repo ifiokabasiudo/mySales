@@ -16,6 +16,7 @@ export default function DashboardB() {
 	{/* <MainSync /> */}
 	<div className={`flex flex-col gap-5 h-fit px-5 w-full text-gray-700 bg-[#ECEFF0] pb-5 ${inter.className}`}>
 		<Navbar />
+		Reminder: Add Mode of payment to Allocation
 		<DashboardCards />
 		<DashboardCardsLevel1 />
 		<DashboardCardsLevel2 />

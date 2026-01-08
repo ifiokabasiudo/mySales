@@ -1,15 +1,12 @@
 "use client";
 
 import React, { useState } from "react";
+import { useSafeAction } from "@/hooks/useSafeAction";
 
 type AddItemModalProps = {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (item: {
-    note: string;
-    total_amount: number;
-    mode: string;
-  }) => void;
+  onAdd: (item: { note: string; total_amount: number; mode: string }) => void;
 };
 
 const SalesAddModal: React.FC<AddItemModalProps> = ({
@@ -21,20 +18,26 @@ const SalesAddModal: React.FC<AddItemModalProps> = ({
   const [amount, setAmount] = useState("0");
   const [paymentType, setPaymentType] = useState("Cash");
   const options = ["Cash", "POS", "Transfer"];
+  const { run, isLoading } = useSafeAction();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const tAmount = parseFloat(amount || "0")
-    if (tAmount < 0) return alert("Amount cannot be negative");
+    run(
+      async () => {
+        const tAmount = parseFloat(amount || "0");
+        if (tAmount <= 0) throw new Error("Enter a valid amount");
 
-    onAdd({ note, total_amount: tAmount, mode: paymentType });
+        onAdd({ note, total_amount: tAmount, mode: paymentType });
 
-    // reset form
-    setNote("");
-    setAmount("0");
+        // reset form
+        setNote("");
+        setAmount("0");
 
-    onClose();
+        onClose();
+      }
+      // { loading: "Saving sale...", success: "Sale saved successfully" }
+    );
   };
 
   if (!isOpen) return null;
@@ -48,6 +51,7 @@ const SalesAddModal: React.FC<AddItemModalProps> = ({
           <div>
             <label className="block mb-1 font-medium">Amount</label>
             <input
+              disabled={isLoading}
               type="number"
               className="w-full border border-gray-300 rounded px-3 py-2"
               value={amount}
@@ -64,33 +68,33 @@ const SalesAddModal: React.FC<AddItemModalProps> = ({
           </div>
 
           <div>
-              <p className="text-sm mb-1 text-slate-500">Payment Type</p>
-              {options.map((item) => (
-                <label
-                  key={item}
-                  className="flex items-center gap-4 cursor-pointer w-fit"
-                  onClick={() => setPaymentType(item)}
-                >
-                  <div className="flex gap-3 items-center">
-                    <div
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center
+            <p className="text-sm mb-1 text-slate-500">Payment Type</p>
+            {options.map((item) => (
+              <label
+                key={item}
+                className="flex items-center gap-4 cursor-pointer w-fit"
+                onClick={() => setPaymentType(item)}
+              >
+                <div className="flex gap-3 items-center">
+                  <div
+                    className={`w-4 h-4 rounded border-2 flex items-center justify-center
             ${
               paymentType === item
                 ? "border-[#1C8220] bg-[#1C8220]"
                 : "border-black"
             }
           `}
-                    >
-                      {paymentType === item && (
-                        <div className="w-2 h-2 bg-white rounded" />
-                      )}
-                    </div>
-
-                    <span className="text-lg text-black">{item}</span>
+                  >
+                    {paymentType === item && (
+                      <div className="w-2 h-2 bg-white rounded" />
+                    )}
                   </div>
-                </label>
-              ))}
-            </div>
+
+                  <span className="text-lg text-black">{item}</span>
+                </div>
+              </label>
+            ))}
+          </div>
 
           <div>
             <label className="block mb-1 font-medium">Note</label>
@@ -105,17 +109,19 @@ const SalesAddModal: React.FC<AddItemModalProps> = ({
 
           <div className="flex justify-end gap-2 mt-4">
             <button
+              disabled={isLoading}
               type="button"
-              className="px-4 py-2 rounded bg-gray-300 hover:bg-gray-400"
+              className={`px-4 py-2 rounded bg-gray-300 hover:bg-gray-400 hover:cursor-pointer ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
               onClick={onClose}
             >
               Cancel
             </button>
             <button
+              disabled={isLoading}
               type="submit"
-              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              className={`px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 hover:cursor-pointer ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
             >
-              Add
+              {isLoading ? "Adding..." : "Add"}
             </button>
           </div>
         </form>

@@ -5,6 +5,7 @@ import { ArrowUpDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import RowActions from "./rowActions/rowActionsInventoryItems"
 import { formatDate } from "@/lib/isoToNormalDate"; 
+import { getItemNumber } from "@/lib/idGenerator"
 
 export type InventoryItems = {
   id: string
@@ -36,9 +37,14 @@ export const columns: ColumnDef<InventoryItems>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           ID
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       )
+    },
+    cell: ({ row }) => {
+      const id: any = row.getValue("id")
+      const date: any = row.getValue("updated_at")
+      return <div className="font-medium">{getItemNumber(id, date)}</div>
     },
   },
   {
@@ -51,7 +57,7 @@ export const columns: ColumnDef<InventoryItems>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Item Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       )
     },
@@ -66,7 +72,7 @@ export const columns: ColumnDef<InventoryItems>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Quantity
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       )
     },
@@ -83,7 +89,7 @@ export const columns: ColumnDef<InventoryItems>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Unit Price
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       )
     },
@@ -111,7 +117,7 @@ export const columns: ColumnDef<InventoryItems>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       )
     },

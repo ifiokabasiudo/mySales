@@ -120,10 +120,6 @@ export default function Expenses() {
 
         let finalExpenses = [...expenses];
 
-        // console.log("Selected: ", selected)
-
-        // console.log("Amount: ", Number(amount))
-
         if(Number(amount) <= 0 && finalExpenses.length < 1 ) {
           throw new Error("Enter an Amount")
         }
@@ -145,7 +141,7 @@ export default function Expenses() {
           });
         }
 
-        if (finalExpenses.length === 0) return;
+        if (finalExpenses.length === 0) throw new Error ("No Expense was added");
 
         // 🔹 Insert each expense as its own row (correct accounting model)
         for (const exp of finalExpenses) {
@@ -160,8 +156,6 @@ export default function Expenses() {
         }
 
         await manualSync();
-
-        // alert("Expenses saved offline, would sync when online!");
 
         setExpenses([]);
         resetForm();

@@ -14,6 +14,7 @@ import { offlineUpdate } from "@/lib/offline";
 import { getSession } from "@/lib/session";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import { db } from "@/lib/db";
+import { useSafeAction } from "@/hooks/useSafeAction";
 
 export default function EditModal({
   open,
@@ -27,54 +28,64 @@ export default function EditModal({
   const [category, setCategory] = useState(data.category);
   const [amount, setAmount] = useState(String(data.amount));
 
+  const { run, isLoading } = useSafeAction();
+
   const { manualSync } = useOfflineSync();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const tAmount = parseFloat(amount || "0");
+    await run(
+      async () => {
+        const tAmount = parseFloat(amount || "0");
 
-    if (!category.trim()) return alert("Category is required");
-    if (tAmount < 0) return alert("Amount cannot be negative");
+        if (!category.trim()) throw new Error ("Category is required");
+        if (tAmount <= 0) throw new Error ("Enter a vaild amount");
 
-    const sessionData = await getSession();
+        const sessionData = await getSession();
 
-    console.log("Session data:", sessionData);
+        console.log("Session data:", sessionData);
 
-    if (!sessionData?.profile.phone) {
-      alert("User not authenticated!");
-      return;
-    }
+        if (!sessionData?.profile.phone) {
+          throw new Error ("User not authenticated!");
+        }
 
-    await offlineUpdate("expenses", {
-      id: data.id,
-      category: category,
-      amount: tAmount,
-    });
+        await offlineUpdate("expenses", {
+          id: data.id,
+          category: category,
+          amount: tAmount,
+        });
 
-    console.log("Pending sync after update:", await db.pending_sync.toArray());
+        console.log(
+          "Pending sync after update:",
+          await db.pending_sync.toArray()
+        );
 
-    await manualSync();
+        await manualSync();
 
-    alert("Item was saved offline, would sync when online!");
+        // alert("Item was saved offline, would sync when online!");
 
-    setCategory("");
-    setAmount("0");
+        setCategory("");
+        setAmount("0");
 
-    setOpen(false);
+        setOpen(false);
+      },
+      { loading: "Editing...", success: "Updated successfully" }
+    );
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Item</DialogTitle>
+          <DialogTitle>Edit Expense</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
             <label>Category</label>
             <Input
+              disabled={isLoading}
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               placeholder="Category"
@@ -84,6 +95,7 @@ export default function EditModal({
           <div>
             <label>Amount</label>
             <Input
+              disabled={isLoading}
               type="number"
               value={amount}
               onChange={(e) => {
@@ -98,10 +110,11 @@ export default function EditModal({
             />
           </div>
           <Button
-            className="w-full bg-gray-600 text-white hover:cursor-pointer"
+            disabled={isLoading}
+            className={`w-full bg-gray-600 text-white hover:cursor-pointer ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
             onClick={handleSave}
           >
-            Save Changes
+            {isLoading ? "Updating..." : "Save Changes"}
           </Button>
         </div>
       </DialogContent>

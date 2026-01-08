@@ -1,33 +1,32 @@
-"use client"
+"use client";
 
-import { ColumnDef } from "@tanstack/react-table"
-import { ArrowUpDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import RowActionsInventorySale from "./rowActions/rowActionsInventorySale"
-import { formatDate } from "@/lib/isoToNormalDate"; 
+import { ColumnDef } from "@tanstack/react-table";
+import { ArrowUpDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import RowActionsInventorySale from "./rowActions/rowActionsInventorySale";
+import { formatDate } from "@/lib/isoToNormalDate";
+import { getInvSaleNumber } from "@/lib/idGenerator";
 
 export type InventorySales = {
-    id: string;
-    item_id: string;
-    phone: string | undefined;
-    name: string;
-    quantity: number;
-    selling_price: number;
-    total_amount: number;
-    payment_type: string;
-    soft_deleted: boolean | undefined;
-    updated_at: string | undefined;
-}
+  id: string;
+  item_id: string;
+  phone: string | undefined;
+  name: string;
+  quantity: number;
+  selling_price: number;
+  total_amount: number;
+  payment_type: string;
+  soft_deleted: boolean | undefined;
+  updated_at: string | undefined;
+};
 
 export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
-{
+  {
     id: "actions",
     cell: ({ row }) => {
-      const data = row.original
+      const data = row.original;
 
-      return (
-        <RowActionsInventorySale data={data}/>
-      )
+      return <RowActionsInventorySale data={data} />;
     },
   },
   {
@@ -40,9 +39,14 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           ID
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
+    },
+    cell: ({ row }) => {
+      const id: any = row.getValue("id");
+      const date: any = row.getValue("updated_at");
+      return <div className="font-medium">{getInvSaleNumber(id, date)}</div>;
     },
   },
   {
@@ -55,9 +59,9 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Item Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
   },
   {
@@ -70,12 +74,12 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Quantity
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
   },
   {
     accessorKey: "selling_price",
@@ -87,20 +91,20 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Selling Price
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
-      const selling_price = parseFloat(row.getValue("selling_price"))
+      const selling_price = parseFloat(row.getValue("selling_price"));
       const formatted = new Intl.NumberFormat("en-NG", {
         style: "currency",
         currency: "NGN",
-      }).format(selling_price)
+      }).format(selling_price);
 
-      return <div className="text-right font-medium">{formatted}</div>
+      return <div className="text-right font-medium">{formatted}</div>;
     },
   },
   {
@@ -113,20 +117,20 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Total Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
-      const total_amount = parseFloat(row.getValue("total_amount"))
+      const total_amount = parseFloat(row.getValue("total_amount"));
       const formatted = new Intl.NumberFormat("en-NG", {
         style: "currency",
         currency: "NGN",
-      }).format(total_amount)
+      }).format(total_amount);
 
-      return <div className="text-right font-medium">{formatted}</div>
+      return <div className="text-right font-medium">{formatted}</div>;
     },
   },
   {
@@ -139,9 +143,9 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Mode of Payment
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
   },
   {
@@ -155,15 +159,17 @@ export const inventorySalesColumns: ColumnDef<InventorySales>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
-      )
+      );
     },
     filterFn: (row, columnId, value) =>
-    String(row.getValue(columnId)).includes(value),
+      String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
-      const updated_at: any = row.getValue("updated_at")
-      return <div className="text-right font-medium">{formatDate(updated_at)}</div>
+      const updated_at: any = row.getValue("updated_at");
+      return (
+        <div className="text-right font-medium">{formatDate(updated_at)}</div>
+      );
     },
   },
-]
+];

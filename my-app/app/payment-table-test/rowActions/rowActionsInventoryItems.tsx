@@ -19,18 +19,18 @@ export default function RowActions({ data }: { data: InventoryItems; }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
+          <Button variant="ghost" size="icon" className="hover:cursor-pointer">
             <MoreHorizontal className="w-4 h-4" />
           </Button>
         </DropdownMenuTrigger>
 
         <DropdownMenuContent className="bg-white" align="end">
-          <DropdownMenuItem onClick={() => setOpenEdit(true)}>
+          <DropdownMenuItem onClick={() => setOpenEdit(true)} className="hover:cursor-pointer">
             Edit
           </DropdownMenuItem>
 
           <DropdownMenuItem
-            className="text-red-600"
+            className="text-red-600 hover:cursor-pointer"
             onClick={() => setOpenDelete(true)}
           >
             Delete

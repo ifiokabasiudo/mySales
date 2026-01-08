@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
 import AddItemModal from "@/app/inventory/components/addItemModal";
 import SalesAddModal from "@/app/dashboard/addSale/quick-sale/components/salesAddModal";
 import InventorySalesAddModal from "@/app/dashboard/addSale/inventory-sale/components/inventorySalesAddModal";
@@ -9,7 +9,17 @@ import { getSession } from "@/lib/session";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import RestockModal from "@/app/inventory/components/restock-modal";
 import AddExpenseModal from "@/app/table/expenses/components/addExpenseModal";
-import { db } from "@/lib/db";
+import { useSafeAction } from "@/hooks/useSafeAction";
+import { TableData } from "@/app/dashboard/addSale/components/newSale";
+import { useInventorySearchGuard } from "@/hooks/useInventorySearchGuard";
+import { BatchItems } from "@/app/inventory/constants/batch_items";
+import Modal from "./modal-component";
+import CheckOutTableButton from "./checkout-table-button";
+import GlobalButton from "./globalButton";
+// import {  } from "react";
+import type { AddExpenseModalRef } from "@/app/table/expenses/components/addExpenseModal";
+
+// import { db } from "@/lib/db";
 
 export default function TableNavbar({
   header,
@@ -22,43 +32,14 @@ export default function TableNavbar({
 }) {
   const [isModalOpen, setModalOpen] = useState(false);
   const [isRestockOpen, setRestockOpen] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [table, setTable] = useState<TableData>(null);
+  const [expenseIndex, setExpenseIndex] = useState<number | null>(null);
+  const { run, isLoading } = useSafeAction();
 
   const { manualSync } = useOfflineSync();
 
-  // useEffect(() => {
-  //   const test = async () => {
-  //     await backfillInventoryBatches();
-  //     await manualSync();
-  //   };
-  //   test();
-  // }, []);
-
-  // async function backfillInventoryBatches() {
-  //   const allBatches = await db.inventory_batches.toArray();
-  //   const pending = await db.pending_sync
-  //     .where("table")
-  //     .equals("inventory_batches")
-  //     .toArray();
-
-  //   const pendingIds = new Set(pending.map((p) => p.payload?.id));
-  //   const missing = allBatches.filter((b) => !pendingIds.has(b.id));
-
-  //   const now = new Date().toISOString();
-
-  //   await db.transaction("rw", db.pending_sync, async () => {
-  //     for (const batch of missing) {
-  //       await db.pending_sync.add({
-  //         table: "inventory_batches",
-  //         action: "insert", // or "update" if you prefer
-  //         payload: batch,
-  //         created_at: now,
-  //         tries: 0,
-  //       });
-  //     }
-  //   });
-
-  //   console.log(`Backfilled ${missing.length} inventory_batches for sync`);
-  // }
+  const expenseModalRef = useRef<AddExpenseModalRef>(null);
 
   // useEffect(() => {
   //   const deleteTable = async () => {
@@ -78,72 +59,67 @@ export default function TableNavbar({
         }
       | any
   ) => {
-    console.log("New item:", item);
-    const data = await getSession();
+    await run(
+      async () => {
+        console.log("New item:", item);
+        const data = await getSession();
 
-    console.log("Session data:", data);
+        console.log("Session data:", data);
 
-    if (!data?.profile.phone) {
-      alert("User not authenticated!");
-      return;
-    }
+        if (!data?.profile.phone) {
+          throw new Error("User not authenticated!");
+        }
 
-    function formatDate(date: Date) {
-      return date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      });
-    }
+        if (header === "Inventory") {
+          await offlineInsert("inventory_items", {
+            id: crypto.randomUUID(), // needed so Dexie + Supabase share same ID
+            phone: data.profile.phone,
+            // auth_user_id: null,
+            // item_code: "ITEM-0200",
+            name: item.name,
+            unit_price: item.unit_price,
+            stock_quantity: item.stock_quantity,
+            // created_at: formatDate(new Date()),
+          });
+        }
 
-    if (header === "Inventory") {
-      await offlineInsert("inventory_items", {
-        id: crypto.randomUUID(), // needed so Dexie + Supabase share same ID
-        phone: data.profile.phone,
-        // auth_user_id: null,
-        // item_code: "ITEM-0200",
-        name: item.name,
-        unit_price: item.unit_price,
-        stock_quantity: item.stock_quantity,
-        // created_at: formatDate(new Date()),
-      });
-    }
+        if (header === "Quick Sales") {
+          await offlineInsert("quick_sales", {
+            id: crypto.randomUUID(), // needed so Dexie + Supabase share same ID
+            phone: data.profile.phone,
+            // auth_user_id: null,
+            // item_code: "ITEM-0200",
+            total_amount: item.total_amount,
+            note: item.note,
+            mode: item.mode,
+            status: "pending",
+            reconciled_amount: 0,
+            // created_at: formatDate(new Date()),
+          });
+        }
 
-    if (header === "Quick Sales") {
-      await offlineInsert("quick_sales", {
-        id: crypto.randomUUID(), // needed so Dexie + Supabase share same ID
-        phone: data.profile.phone,
-        // auth_user_id: null,
-        // item_code: "ITEM-0200",
-        total_amount: item.total_amount,
-        note: item.note,
-        mode: item.mode,
-        status: "pending",
-        reconciled_amount: 0,
-        // created_at: formatDate(new Date()),
-      });
-    }
+        console.log("Inventory sales items: ", item);
 
-    console.log("Inventory sales items: ", item);
+        if (header === "Inventory Sales") {
+          await offlineInsert("inventory_sales", {
+            id: crypto.randomUUID(),
+            // client_sale_id: crypto.randomUUID(),
+            phone: data.profile.phone,
+            item_id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            selling_price: item.selling_price,
+            payment_type: item.payment_type,
+            // created_at: formatDate(new Date()),
+          });
+        }
 
-    if (header === "Inventory Sales") {
-      await offlineInsert("inventory_sales", {
-        id: crypto.randomUUID(),
-        client_sale_id: crypto.randomUUID(),
-        phone: data.profile.phone,
-        item_id: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        selling_price: item.selling_price,
-        payment_type: item.payment_type,
-        // created_at: formatDate(new Date()),
-      });
-    }
+        await manualSync();
 
-    await manualSync();
-
-    alert("Item was saved offline, would sync when online!");
+        // alert("Item was saved offline, would sync when online!");
+      },
+      { loading: "Saving...", success: "Success" }
+    );
   };
 
   const handleRestock = async (item: {
@@ -152,40 +128,35 @@ export default function TableNavbar({
     stock_quantity: number;
     unit_price: number;
   }) => {
-    console.log("New item:", item);
-    const data = await getSession();
+    await run(
+      async () => {
+        console.log("New item:", item);
+        const data = await getSession();
 
-    console.log("Session data:", data);
+        console.log("Session data:", data);
 
-    if (!data?.profile.phone) {
-      alert("User not authenticated!");
-      return;
-    }
+        if (!data?.profile.phone) {
+          throw new Error("User not authenticated!");
+        }
 
-    function formatDate(date: Date) {
-      return date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      });
-    }
+        await offlineInsert("inventory_batches", {
+          id: crypto.randomUUID(),
+          item_id: item.id, // needed so Dexie + Supabase share same ID
+          phone: data.profile.phone,
+          // auth_user_id: null,
+          // item_code: "ITEM-0200",
+          // name: item.name,
+          unit_cost: item.unit_price,
+          quantity: item.stock_quantity,
+          // created_at: formatDate(new Date()),
+        });
 
-    await offlineInsert("inventory_batches", {
-      id: crypto.randomUUID(),
-      item_id: item.id, // needed so Dexie + Supabase share same ID
-      phone: data.profile.phone,
-      // auth_user_id: null,
-      // item_code: "ITEM-0200",
-      // name: item.name,
-      unit_cost: item.unit_price,
-      quantity: item.stock_quantity,
-      // created_at: formatDate(new Date()),
-    });
+        await manualSync();
 
-    await manualSync();
-
-    alert("Item was saved offline, would sync when online!");
+        // alert("Item was saved offline, would sync when online!");
+      },
+      { loading: "Restocking...", success: "Restocked" }
+    );
   };
 
   return (
@@ -194,21 +165,38 @@ export default function TableNavbar({
       <div className="flex justify-between text-md gap-4">
         {addItem && header === "Inventory" && (
           <button
+            disabled={isLoading}
             onClick={() => setRestockOpen(true)}
-            className="bg-white text-black px-3 text-sm rounded-full shadow-xl hover:bg-gray-300 hover:cursor-pointer"
+            className={`bg-white text-black px-3 text-sm rounded-full shadow-xl hover:bg-gray-300 hover:cursor-pointer ${
+              isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""
+            }`}
           >
-            Restock
+            {isLoading ? "Restocking..." : "Restock"}
           </button>
         )}
         {addItem && (
           <button
+            disabled={isLoading}
             onClick={() => setModalOpen(true)}
-            className="bg-white text-black px-3 text-sm rounded-full shadow-xl hover:bg-gray-300 hover:cursor-pointer"
+            className={`bg-white text-black px-3 text-sm rounded-full shadow-xl hover:bg-gray-300 hover:cursor-pointer ${
+              isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""
+            }`}
           >
-            <span className="text-[#1C8220]">+</span> Add Item
+            {isLoading ? (
+              "Adding..."
+            ) : (
+              <>
+                <span className="text-[#1C8220]">+</span> Add Item
+              </>
+            )}
           </button>
         )}
-        <button className="flex flex-col text-[10px] items-center hover:cursor-pointer">
+        <button
+          disabled={isLoading}
+          className={`flex flex-col text-[10px] items-center hover:cursor-pointer ${
+            isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""
+          }`}
+        >
           <svg
             className="w-6 h-6"
             xmlns="http://www.w3.org/2000/svg"
@@ -245,14 +233,75 @@ export default function TableNavbar({
           isOpen={isModalOpen}
           onClose={() => setModalOpen(false)}
           onAdd={handleAddItem}
+          setTable={setTable}
+          setShowModal={setShowModal}
         />
       )}
       {addItem && header === "Expenses" && (
         <AddExpenseModal
+          ref={expenseModalRef}
           isOpen={isModalOpen}
           onClose={() => setModalOpen(false)}
+          onRequestDelete={(index) => {
+            setExpenseIndex(index);
+            setShowModal(true);
+          }}
           // onAdd={handleAddItem}
         />
+      )}
+      {table && header == "Inventory Sales" && (
+        <Modal
+          show={showModal}
+          setShow={setShowModal}
+          alignment="bottom"
+          isIntercepting={true}
+          showCancelBtnINSmallDevice={true}
+          setTable={setTable}
+        >
+          <div className="flex flex-col gap-2">
+            <>
+              <h1 className="text-xl">No items found in your inventory!</h1>
+              <p className="text-sm text-gray-600">
+                You need to add items before making a sale.
+              </p>
+              <CheckOutTableButton {...table} />
+            </>
+
+            {/* <h1 className="text-xl">
+              Would you like to visit the {table.tableName} Table?
+            </h1>
+            <CheckOutTableButton {...table} /> */}
+          </div>
+        </Modal>
+      )}
+      {header === "Expenses" && (
+        <Modal
+          show={showModal}
+          setShow={setShowModal}
+          alignment="center"
+          isIntercepting
+          showCancelBtnINSmallDevice
+          setTable={() => {}}
+        >
+          <div className="flex flex-col gap-3">
+            <h1>Are you sure you want to delete this expense?</h1>
+
+            <GlobalButton
+              buttonName="Delete"
+              buttonColor="bg-rose-600"
+              link={null}
+              index={expenseIndex}
+              handleClick={(index) => {
+                console.log("This is the index: ", index)
+                if (index === null) return;
+                expenseModalRef.current?.handleRemove(index);
+                // handleRemove(expenseIndex); // comes from AddExpenseModal
+                setShowModal(false);
+                setExpenseIndex(null);
+              }}
+            />
+          </div>
+        </Modal>
       )}
     </div>
   );

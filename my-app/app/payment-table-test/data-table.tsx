@@ -108,7 +108,7 @@ export function DataTable<TData, TValue>({
       <div className={`flex items-center py-4 ${inter.className}`}>
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-none" asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="ml-auto hover:cursor-pointer">
               Filter By
             </Button>
           </DropdownMenuTrigger>
@@ -118,7 +118,7 @@ export function DataTable<TData, TValue>({
                 return (
                   <DropdownMenuCheckboxItem
                     key={filter.id}
-                    className="capitalize"
+                    className="capitalize hover:cursor-pointer"
                     onCheckedChange={() => {
                       setSelectFilter(filter.id);
                       setPlaceholder(filter.name);
@@ -147,7 +147,7 @@ export function DataTable<TData, TValue>({
         />
         <DropdownMenu>
           <DropdownMenuTrigger className="rounded-none" asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className="ml-auto hover:cursor-pointer">
               Columns
             </Button>
           </DropdownMenuTrigger>
@@ -279,6 +279,7 @@ export function DataTable<TData, TValue>({
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <Button
+          className="hover:cursor-pointer"
           variant="outline"
           size="sm"
           onClick={() => table.previousPage()}
@@ -287,6 +288,7 @@ export function DataTable<TData, TValue>({
           Previous
         </Button>
         <Button
+          className="hover:cursor-pointer"
           variant="outline"
           size="sm"
           onClick={() => table.nextPage()}

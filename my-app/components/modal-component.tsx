@@ -79,7 +79,7 @@ const Modal = ({
 
   return createPortal(
     <div
-      className={`fixed ${
+      className={`fixed px-4 ${
         show && `z-100 inset-0`
       } bg-black/60 transition-opacity duration-300 ease-in-out flex ${
         alignment != "bottom" && "items-center"

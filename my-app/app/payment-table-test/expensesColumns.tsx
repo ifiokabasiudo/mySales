@@ -4,7 +4,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import RowActionsExpenses from "./rowActions/rowActionsExpenses";
-import { formatDate } from "@/lib/isoToNormalDate"; 
+import { formatDate } from "@/lib/isoToNormalDate";
+import { getExpense } from "@/lib/idGenerator";
 
 export type Expenses = {
   id: string;
@@ -72,9 +73,14 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           ID
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
+    },
+    cell: ({ row }) => {
+      const id: any = row.getValue("id");
+      const date: any = row.getValue("updated_at");
+      return <div className="font-medium">{getExpense(id, date)}</div>;
     },
   },
   {
@@ -87,7 +93,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Category
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
     },
@@ -102,7 +108,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
     },
@@ -130,7 +136,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Quantity
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
     },
@@ -138,9 +144,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
       String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
       const value = row.getValue("quantity");
-      return (
-        <div className="font-medium">{formatQuantity(value)}</div>
-      );
+      return <div className="font-medium">{formatQuantity(value)}</div>;
     },
   },
   {
@@ -153,7 +157,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Unit Cost
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
     },
@@ -183,7 +187,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Total Cost
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
     },
@@ -213,7 +217,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
   //         onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
   //       >
   //         Mode of Payment
-  //         <ArrowUpDown className="ml-2 h-4 w-4" />
+  //         <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
   //       </Button>
   //     )
   //   },
@@ -229,7 +233,7 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
           Date
-          <ArrowUpDown className="ml-2 h-4 w-4" />
+          <div className="hover:cursor-pointer"><ArrowUpDown className="ml-2 h-4 w-4" /></div>
         </Button>
       );
     },
@@ -237,7 +241,9 @@ export const expensesColumns: ColumnDef<Expenses>[] = [
       String(row.getValue(columnId)).includes(value),
     cell: ({ row }) => {
       const updated_at: any = row.getValue("updated_at");
-      return <div className="text-right font-medium">{formatDate(updated_at)}</div>;
+      return (
+        <div className="text-right font-medium">{formatDate(updated_at)}</div>
+      );
     },
   },
 ];

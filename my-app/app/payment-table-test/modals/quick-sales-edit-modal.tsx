@@ -9,13 +9,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-// import { InventoryItems } from "../InventoryItemsColumns";
 import { QuickSales } from "../quickSalesColumns";
 import { offlineUpdate } from "@/lib/offline";
 import { getSession } from "@/lib/session";
 import useOfflineSync from "@/hooks/useOfflineSync";
 import { db } from "@/lib/db";
-import Dexie from "dexie";
+import { useSafeAction } from "@/hooks/useSafeAction";
 
 export default function EditModal({
   open,
@@ -31,108 +30,107 @@ export default function EditModal({
   const [paymentType, setPaymentType] = useState("Cash");
   const options = ["Cash", "POS", "Transfer"];
   const { manualSync } = useOfflineSync();
+  const { run, isLoading } = useSafeAction();
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const tAmount = parseFloat(amount || "0");
-    if (tAmount < 0) return alert("Amount cannot be negative");
+    await run(
+      async () => {
+        const tAmount = parseFloat(amount || "0");
+        if (tAmount <= 0) throw new Error ("Enter a valid amount");
 
-    const sessionData = await getSession();
+        const sessionData = await getSession();
 
-    console.log("Session data:", sessionData);
+        console.log("Session data:", sessionData);
 
-    if (!sessionData?.profile.phone) {
-      alert("User not authenticated!");
-      return;
-    }
+        if (!sessionData?.profile.phone) {
+          throw new Error ("User not authenticated!");
+        }
 
-    function formatDate(date: Date) {
-      return date.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "2-digit",
-        year: "numeric",
-      });
-    }
+        await offlineUpdate("quick_sales", {
+          id: data.id,
+          total_amount: amount,
+          reconciled_amount: 0,
+          note: note,
+          mode: paymentType,
+          status: "pending",
+        });
 
-    await offlineUpdate("quick_sales", {
-      id: data.id,
-      total_amount: amount,
-      reconciled_amount: 0,
-      note: note,
-      mode: paymentType,
-      status: "pending",
-      updated_at: formatDate(new Date()),
-    });
+        console.log(
+          "Pending sync after update:",
+          await db.pending_sync.toArray()
+        );
 
-    console.log("Pending sync after update:", await db.pending_sync.toArray());
+        // Now trigger sync
+        await manualSync();
 
-    // Now trigger sync
-    await manualSync();
-
-    alert("Item was saved offline, would sync when online!");
-    setAmount("0");
-
-    setOpen(false);
+        // alert("Item was saved offline, would sync when online!");
+        setAmount("0");
+        setOpen(false);
+      },
+      { loading: "Editing...", success: "Updated sucessfully" }
+    );
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Item</DialogTitle>
+          <DialogTitle>Edit Sale</DialogTitle>
         </DialogHeader>
-          <div>
-            <label>Amount</label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => {
-                const v = e.target.value;
+        <div>
+          <label>Amount</label>
+          <Input
+            disabled={isLoading}
+            type="number"
+            value={amount}
+            onChange={(e) => {
+              const v = e.target.value;
 
-                // allow empty, digits, and decimals
-                if (/^[0-9]*\.?[0-9]*$/.test(v)) {
-                  setAmount(v);
-                }
-              }}
-              placeholder="Amount"
-            />
-          </div>
+              // allow empty, digits, and decimals
+              if (/^[0-9]*\.?[0-9]*$/.test(v)) {
+                setAmount(v);
+              }
+            }}
+            placeholder="Amount"
+          />
+        </div>
 
-          <div>
-              <p className="text-sm mb-1 text-slate-500">Payment Type</p>
-              {options.map((item) => (
-                <label
-                  key={item}
-                  className="flex items-center gap-4 cursor-pointer w-fit"
-                  onClick={() => setPaymentType(item)}
-                >
-                  <div className="flex gap-3 items-center">
-                    <div
-                      className={`w-4 h-4 rounded border-2 flex items-center justify-center
+        <div>
+          <p className="text-sm mb-1 text-slate-500">Payment Type</p>
+          {options.map((item) => (
+            <label
+              key={item}
+              className="flex items-center gap-4 cursor-pointer w-fit"
+              onClick={() => setPaymentType(item)}
+            >
+              <div className="flex gap-3 items-center">
+                <div
+                  className={`w-4 h-4 rounded border-2 flex items-center justify-center
             ${
               paymentType === item
                 ? "border-[#1C8220] bg-[#1C8220]"
                 : "border-black"
             }
           `}
-                    >
-                      {paymentType === item && (
-                        <div className="w-2 h-2 bg-white rounded" />
-                      )}
-                    </div>
+                >
+                  {paymentType === item && (
+                    <div className="w-2 h-2 bg-white rounded" />
+                  )}
+                </div>
 
-                    <span className="text-lg text-black">{item}</span>
-                  </div>
-                </label>
-              ))}
-            </div>
+                <span className="text-lg text-black">{item}</span>
+              </div>
+            </label>
+          ))}
+        </div>
 
-          <div className="space-y-4">
+        <div className="space-y-4">
           <div>
             <label>Note (optional)</label>
             <Input
+              disabled={isLoading}
               value={note || ""}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add note"
@@ -140,10 +138,11 @@ export default function EditModal({
           </div>
 
           <Button
-            className="w-full bg-gray-600 text-white hover:cursor-pointer"
+            disabled={isLoading}
+            className={`w-full bg-gray-600 text-white hover:cursor-pointer ${isLoading ? "opacity-50 cursor-not-allowed animate-pulse" : ""}`}
             onClick={handleSave}
           >
-            Save Changes
+            {isLoading ? "Updating..." : "Save Changes"}
           </Button>
         </div>
       </DialogContent>

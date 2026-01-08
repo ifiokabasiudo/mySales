@@ -42,7 +42,7 @@ export async function syncPending({
           .select()
           .single();
 
-        if (error) throw error;
+        if (error) throw new Error (error.message);
 
         // 🔁 ID REMAPPING (critical for offline-first)
         if (data?.id && data.id !== payload.id) {
@@ -79,7 +79,7 @@ export async function syncPending({
           .update(payload)
           .eq("id", payload.id);
 
-        if (error) throw error;
+        if (error) throw new Error (error.message);
 
         await db.pending_sync.delete(item.local_id!);
         continue;
@@ -100,7 +100,7 @@ export async function syncPending({
           })
           .eq("id", id);
 
-        if (error) throw error;
+        if (error) throw new Error (error.message);
 
         await db.pending_sync.delete(item.local_id!);
         continue;
