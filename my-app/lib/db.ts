@@ -137,7 +137,7 @@ class MySalesDB extends Dexie {
   pending_sync!: Dexie.Table<PendingSync, number>;
 
   constructor() {
-    super("mySalesDB_v1");
+    super("mySalesDB");
     this.version(5).stores({
       quick_sales: "id, total_amount, reconciled_amount, status, created_at",
       inventory_items: "id, name, stock_quantity, created_at",
