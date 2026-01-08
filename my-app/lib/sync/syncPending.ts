@@ -4,6 +4,7 @@
 import { db } from "../db";
 import { supabase } from "../supabase/client";
 import { classifySyncError } from "./classifySyncError";
+import { safeDB } from "./safeDB";
 
 const MAX_RETRIES = 5;
 
@@ -19,7 +20,8 @@ export async function syncPending({
   force?: boolean;
 } = {}) {
   // Always process in order
-  const items = await db.pending_sync.orderBy("created_at").toArray();
+//   const items = await db.pending_sync.orderBy("created_at").toArray();
+const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray());
 
   for (const item of items) {
     if (signal?.aborted) break;

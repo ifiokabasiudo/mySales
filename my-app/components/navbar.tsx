@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import MainSync from "@/hooks/mainSync";
 import Sidebar from "@/components/sidebar";
+import { useSafeAction } from "@/hooks/useSafeAction";
 
 export default function Navbar() {
   const router = useRouter();
@@ -13,21 +14,24 @@ export default function Navbar() {
   const [profile, setProfile] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const { run, isLoading } = useSafeAction();
+
   /* ✅ LOAD SESSION ONCE */
   useEffect(() => {
-    async function loadSession() {
-      const data = await getSession();
+    run(async () => {
+      async function loadSession() {
+        const data = await getSession();
 
-      if (!data?.profile?.first_name) {
-        alert("Not authenticated. Please log in");
-        router.push("/auth/login");
-        return;
+        if (!data?.profile?.first_name) {
+          router.push("/auth/login");
+          return;
+        }
+
+        setProfile(data.profile);
       }
 
-      setProfile(data.profile);
-    }
-
-    loadSession();
+      loadSession();
+    });
   }, []);
 
   return (

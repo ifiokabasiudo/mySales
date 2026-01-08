@@ -6,10 +6,27 @@ import { runSync } from "@/hooks/useSync";
 export default function SyncBoundary() {
   useEffect(() => {
     // App open
-    runSync();
+    // runSync();
+
+    // // Network regain
+    // const onOnline = () => runSync();
+     (async () => {
+      try {
+        await runSync();
+      } catch (err) {
+        console.warn("Initial sync failed:", err);
+      }
+    })();
 
     // Network regain
-    const onOnline = () => runSync();
+    const onOnline = async () => {
+      try {
+        await runSync();
+      } catch (err) {
+        console.warn("Sync on reconnect failed:", err);
+      }
+    };
+
     window.addEventListener("online", onOnline);
 
     return () => {
