@@ -39,6 +39,7 @@
 // }
 
 // lib/sync/safeDB.ts
+import Dexie from "dexie";
 import { db } from "../db";
 
 const DB_NAME = "mySalesDB";
@@ -92,7 +93,8 @@ export async function safeDB<T>(
   } catch (err: any) {
     if (isFatalIndexedDBError(err)) {
       console.error("Fatal IndexedDB error detected:", err);
-      await resetDatabaseOnce();
+      await Dexie.delete(DB_NAME)
+      // await resetDatabaseOnce();
       return [] as any;
     }
 
