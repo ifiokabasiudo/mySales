@@ -1,4 +1,6 @@
 // lib/sync/tableMap.ts
+"use client"
+
 import { db } from "@/lib/db";
 
 export const tableMap = {
