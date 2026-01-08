@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import AddItemModal from "@/app/inventory/components/addItemModal";
 import SalesAddModal from "@/app/dashboard/addSale/quick-sale/components/salesAddModal";
 import InventorySalesAddModal from "@/app/dashboard/addSale/inventory-sale/components/inventorySalesAddModal";
@@ -19,7 +19,7 @@ import GlobalButton from "./globalButton";
 // import {  } from "react";
 import type { AddExpenseModalRef } from "@/app/table/expenses/components/addExpenseModal";
 
-// import { db } from "@/lib/db";
+import { db } from "@/lib/db";
 
 export default function TableNavbar({
   header,

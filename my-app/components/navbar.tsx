@@ -36,7 +36,7 @@ export default function Navbar() {
 
   return (
     <>
-      {/* <MainSync /> */}
+      <MainSync />
       <nav className="w-full sticky z-50 bg-[#ECEFF0] flex items-center justify-between">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex items-center gap-4 py-2">

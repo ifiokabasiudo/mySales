@@ -109,6 +109,7 @@ export type Expenses = {
 
 export type PendingSync = {
   local_id?: number; // Dexie auto-increment key
+  phone: string;
   table:
     | "quick_sales"
     | "inventory_items"
@@ -138,15 +139,15 @@ class MySalesDB extends Dexie {
 
   constructor() {
     super("mySalesDB");
-    this.version(5).stores({
-      quick_sales: "id, total_amount, reconciled_amount, status, created_at",
-      inventory_items: "id, name, stock_quantity, created_at",
-      inventory_sales: "id, item_id, batch_id, inventory_sales_id, soft_deleted, created_at",
+    this.version(7).stores({
+      quick_sales: "id, phone, total_amount, reconciled_amount, status, created_at",
+      inventory_items: "id, phone, name, stock_quantity, created_at",
+      inventory_sales: "id, phone, item_id, batch_id, inventory_sales_id, soft_deleted, created_at",
       reconciliation_links:
-        "id, quick_sales_id, inventory_sales_id, created_at",
-      inventory_batches: "id, item_id, is_active, created_at",
-      expenses: "id, type, inventory_sales_id, created_at",
-      pending_sync: "++local_id, table, action, created_at",
+        "id, phone, quick_sales_id, inventory_sales_id, created_at",
+      inventory_batches: "id, phone, item_id, is_active, created_at",
+      expenses: "id, type, phone, inventory_sales_id, created_at",
+      pending_sync: "++local_id, table, phone, action, created_at",
     });
 
     this.quick_sales = this.table("quick_sales");

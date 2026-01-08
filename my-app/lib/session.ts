@@ -13,5 +13,7 @@ export async function getSession() {
 }
 
 export async function clearSession() {
-  await Preferences.remove({ key: "session" });
+  // await Preferences.remove({ key: "session" });
+  // await Preferences.clear()
+  await Preferences.set({ key: "session", value: JSON.stringify(null) });
 }

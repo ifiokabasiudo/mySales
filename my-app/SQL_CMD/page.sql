@@ -942,5 +942,6 @@ BEGIN
 END;
 $$;
 
+-- https://github.com/dexie/Dexie.js/issues/1767
 
 

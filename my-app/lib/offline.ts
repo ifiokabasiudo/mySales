@@ -10,6 +10,18 @@ import {
   Expenses,
 } from "./db";
 
+import { getSession } from "./session";
+
+export async function getNumber(): Promise<string> {
+  const userData = await getSession();
+
+  if (!userData || !userData.profile?.phone) {
+    throw new Error("User not authenticated");
+  }
+
+  return userData.profile.phone;
+}
+
 function dateNow() {
   return new Date().toISOString();
 }
@@ -222,6 +234,7 @@ export async function offlineInsert<T extends Record<string, any>>(
 
       await db.pending_sync.add({
         table: "inventory_items",
+        phone: await getNumber(),
         action: "insert",
         payload: item,
         created_at: now,
@@ -248,6 +261,7 @@ export async function offlineInsert<T extends Record<string, any>>(
         //This extra block only exists only exists because there is no trigger for this in supabase.
         await db.pending_sync.add({
           table: "inventory_batches",
+          phone: await getNumber(),
           action: "insert",
           payload: batch,
           created_at: now,
@@ -263,6 +277,7 @@ export async function offlineInsert<T extends Record<string, any>>(
   if (table != "inventory_items") {
     await db.pending_sync.add({
       table,
+      phone: await getNumber(),
       action: "insert",
       payload: prepare,
       created_at: now,
@@ -447,6 +462,7 @@ export async function offlineUpdate<T extends Record<string, any>>(
   // queue sync
   await db.pending_sync.add({
     table,
+    phone: await getNumber(),
     action: "update",
     payload: updated,
     created_at: now,
@@ -515,6 +531,7 @@ export async function offlineSoftDelete(
 
       await db.pending_sync.add({
         table: "inventory_batches",
+        phone: await getNumber(),
         action: "soft_delete",
         payload: { id, reason },
         created_at: now,
@@ -542,6 +559,7 @@ export async function offlineSoftDelete(
 
           await db.pending_sync.add({
             table: "inventory_items",
+            phone: await getNumber(),
             action: "soft_delete",
             payload: { id: item.id, reason: "All batches deleted" },
             created_at: now,
@@ -686,6 +704,7 @@ export async function offlineSoftDelete(
   if (table != "inventory_batches") {
     await db.pending_sync.add({
       table,
+      phone: await getNumber(),
       action: "soft_delete",
       payload: { id, reason },
       created_at: now,

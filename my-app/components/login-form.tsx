@@ -143,7 +143,7 @@ export function LoginForm({
 
   return (
     <div
-      className={`relative flex flex-col space-y-5 items-center text-black bg-[#F5FAFD] p-20 w-full ${dmSerifDisplay.className}`}
+      className={`relative flex flex-col space-y-5 items-center text-black bg-[#F5FAFD] px-4 py-10 w-full ${dmSerifDisplay.className}`}
       {...props}
     >
       <BackButton backlink={"/"} />

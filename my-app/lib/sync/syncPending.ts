@@ -2,6 +2,7 @@
 // "use client";
 
 import { db } from "../db";
+import { getSession } from "../session";
 import { supabase } from "../supabase/client";
 import { classifySyncError } from "./classifySyncError";
 import { safeDB } from "./safeDB";
@@ -22,13 +23,25 @@ export async function syncPending({
   // Always process in order
   //   const items = await db.pending_sync.orderBy("created_at").toArray();
   // const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray());
+  const userData = await getSession();
+
   const items = await safeDB(
     async () =>
-      db.pending_sync ? db.pending_sync.orderBy("created_at").toArray() : [],
+      db.pending_sync
+        ? db.pending_sync.where({ phone: userData?.profile?.phone }).toArray()
+        : [],
     "pending_sync"
   );
 
-  console.log("The pending items: ", items)
+  console.log("These are the items before sort: ", items)
+
+  items.sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateA - dateB;
+  });
+
+  console.log("The pending items: ", items);
 
   for (const item of items) {
     if (signal?.aborted) break;

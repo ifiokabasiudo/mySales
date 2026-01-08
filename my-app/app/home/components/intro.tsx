@@ -24,11 +24,11 @@ export default function Intro() {
 
       <h1 className={`mb-30 text-2xl ${dmSerifDisplay.className}`}>TRACK SALES, SEE PROFITS</h1>
 
-      <div className="flex flex-row w-full justify-between space-x-5 px-10">
-        <a href="/auth/login" className="w-[80%] py-4 text-center bg-none border border-[#F5FAFD] rounded-md hover:bg-[#F5FAFD] hover:text-[#1C8220] transition">
+      <div className="flex flex-row w-full justify-between gap-3">
+        <a href="/auth/login" className="w-1/2 py-2 text-center bg-none border border-[#F5FAFD] rounded-md hover:bg-[#F5FAFD] hover:text-[#1C8220] transition">
             Login
         </a>
-        <a href="/auth/sign-up" className="w-[80%] py-4 text-center border hover:border-[#F5FAFD] rounded-md bg-[#F5FAFD] text-[#1C8220] hover:text-[#F5FAFD] hover:bg-none transition">
+        <a href="/auth/sign-up" className="w-1/2 py-2 text-center border hover:border-[#F5FAFD] rounded-md bg-[#F5FAFD] text-[#1C8220] hover:text-[#F5FAFD] hover:bg-none transition">
             Sign Up
         </a>
       </div>
