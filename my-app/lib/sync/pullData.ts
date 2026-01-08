@@ -1,26 +1,3 @@
-// import { db } from "../../lib/db";
-// import { supabase } from "../supabase/client";
-// import { getSession } from "../session";
-
-// export async function pullData() {
-
-//  const tables = ["inventory_items", "quick_sales", "inventory_sales", "inventory_batches", "reconciliation_links", "expenses"];
-//   const session = await getSession();
-//   if (!session) throw new Error("No session found");
-//   const phone = session?.profile.phone!;
-
-//   for ( const table of tables) {
-//   const { data: items, error } = await supabase
-//     .from(table)
-//     .select("*")
-//     .eq("phone", phone)
-
-//   if (error) throw error;
-
-//   await db.inventory_items.clear();
-//   await db.inventory_items.bulkPut(items);
-// }
-// }
 import { supabase } from "../supabase/client";
 import { getSession } from "../session";
 import { tableMap } from "./tableMap";

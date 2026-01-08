@@ -138,7 +138,7 @@ class MySalesDB extends Dexie {
 
   constructor() {
     super("mySalesDB");
-    this.version(4).stores({
+    this.version(5).stores({
       quick_sales: "id, total_amount, reconciled_amount, status, created_at",
       inventory_items: "id, name, stock_quantity, created_at",
       inventory_sales: "id, item_id, batch_id, inventory_sales_id, soft_deleted, created_at",
