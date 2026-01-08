@@ -13,7 +13,7 @@ export async function runSync() {
   syncInProgress = true;
 
   try {
-    // await syncPending();           // ✅ push ALL pending changes
+    await syncPending();           // ✅ push ALL pending changes
     await pullData(); // ✅ pull server truth
   } finally {
     syncInProgress = false;

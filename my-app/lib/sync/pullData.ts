@@ -25,13 +25,13 @@ import { supabase } from "../supabase/client";
 import { getSession } from "../session";
 import { tableMap } from "./tableMap";
 import { Table } from "dexie";
+import { safeDB } from "./safeDB";
 
-async function replaceTable<T>(
-  table: Table<T, any>,
-  items: T[]
-) {
-  await table.clear();
-  await table.bulkPut(items);
+async function replaceTable<T>(table: Table<T, any>, items: T[]) {
+  await safeDB(async () => {
+    await table.clear();
+    await table.bulkPut(items);
+  });
 }
 
 export async function pullData() {
@@ -52,9 +52,9 @@ export async function pullData() {
 
     if (error) throw error;
 
-    console.log("Ok so this ran!!!")
+    console.log("Ok so this ran!!!");
 
     // 🔒 atomic replace
-    await replaceTable(localTable, data ?? [])
+    await replaceTable(localTable, data ?? []);
   }
 }
