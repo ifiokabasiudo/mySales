@@ -20,8 +20,13 @@ export async function syncPending({
   force?: boolean;
 } = {}) {
   // Always process in order
-//   const items = await db.pending_sync.orderBy("created_at").toArray();
-const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray());
+  //   const items = await db.pending_sync.orderBy("created_at").toArray();
+  // const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray());
+  const items = await safeDB(
+    async () =>
+      db.pending_sync ? db.pending_sync.orderBy("created_at").toArray() : [],
+    "pending_sync"
+  );
 
   for (const item of items) {
     if (signal?.aborted) break;
@@ -44,7 +49,7 @@ const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray()
           .select()
           .single();
 
-        if (error) throw new Error (error.message);
+        if (error) throw new Error(error.message);
 
         // 🔁 ID REMAPPING (critical for offline-first)
         if (data?.id && data.id !== payload.id) {
@@ -81,7 +86,7 @@ const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray()
           .update(payload)
           .eq("id", payload.id);
 
-        if (error) throw new Error (error.message);
+        if (error) throw new Error(error.message);
 
         await db.pending_sync.delete(item.local_id!);
         continue;
@@ -102,7 +107,7 @@ const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray()
           })
           .eq("id", id);
 
-        if (error) throw new Error (error.message);
+        if (error) throw new Error(error.message);
 
         await db.pending_sync.delete(item.local_id!);
         continue;
@@ -135,7 +140,13 @@ const items = await safeDB(() => db.pending_sync.orderBy("created_at").toArray()
       });
 
       if ((item.tries ?? 0) + 1 >= MAX_RETRIES) {
-        console.error("Max retries reached for sync item: ", item, " currently at ", item.tries, " tries.");
+        console.error(
+          "Max retries reached for sync item: ",
+          item,
+          " currently at ",
+          item.tries,
+          " tries."
+        );
       }
 
       continue;

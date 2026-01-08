@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useEffect } from "react";
 import { runSync } from "@/hooks/useSync";
@@ -10,13 +10,13 @@ export default function SyncBoundary() {
 
     // // Network regain
     // const onOnline = () => runSync();
-     (async () => {
+    const timer = setTimeout(async () => {
       try {
         await runSync();
       } catch (err) {
         console.warn("Initial sync failed:", err);
       }
-    })();
+    }, 200);
 
     // Network regain
     const onOnline = async () => {
@@ -30,6 +30,7 @@ export default function SyncBoundary() {
     window.addEventListener("online", onOnline);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("online", onOnline);
     };
   }, []);

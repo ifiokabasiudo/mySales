@@ -52,6 +52,8 @@ export async function pullData() {
 
     if (error) throw error;
 
+    console.log("Ok so this ran!!!")
+
     // 🔒 atomic replace
     await replaceTable(localTable, data ?? [])
   }
