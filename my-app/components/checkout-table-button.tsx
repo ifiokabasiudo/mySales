@@ -11,7 +11,7 @@ export default function CheckOutTableButton (table: TableData | undefined) {
               }}
               className="text-white bg-green-700 rounded-md py-2 w-full hover:cursor-pointer"
             >
-              Go To Table
+              Go To {table?.tableName} Table
             </button>
     )
 }
