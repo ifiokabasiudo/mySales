@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import MainSync from "@/hooks/mainSync";
 import Sidebar from "@/components/sidebar";
 import { useSafeAction } from "@/hooks/useSafeAction";
+import Link from "next/link";
 
 export default function Navbar() {
   const router = useRouter();
@@ -153,7 +154,7 @@ export default function Navbar() {
           </div>
         </div>
 
-        <a href="#" className="cursor-pointer">
+        <Link href="#" className="cursor-pointer">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="54"
@@ -212,7 +213,7 @@ export default function Navbar() {
               </filter>
             </defs>
           </svg>
-        </a>
+        </Link>
       </nav>
     </>
   );

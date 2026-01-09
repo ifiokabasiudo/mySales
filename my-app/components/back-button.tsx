@@ -1,6 +1,8 @@
+import Link from "next/link";
+
 export default function BackButton({backlink}: {backlink: string}) {
   return (
-    <a href={backlink} className="flex items-center gap-3 absolute top-5 left-5">
+    <Link href={backlink} className="flex items-center gap-3 absolute top-5 left-5">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="12"
@@ -17,6 +19,6 @@ export default function BackButton({backlink}: {backlink: string}) {
       </svg>
       {" "}
       Back
-    </a>
+    </Link>
   );
 }

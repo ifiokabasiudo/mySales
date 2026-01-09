@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { calculateProfit } from "../../profits/components/calculateProfit";
 import { ProfitPeriodDropdown, Period } from "./profit-period";
+import Link from "next/link";
 
 const periodLabelMap: Record<Period, string> = {
   daily: "Today's",
@@ -109,7 +110,7 @@ export default function DashboardCards() {
               {/* 🔹 SALES / EXPENSES → HISTORY LINKS */}
               {"links" in card &&
                 card.links.map((link, idx) => (
-                  <a
+                  <Link
                     key={idx}
                     href={link.href}
                     className={`${
@@ -119,7 +120,7 @@ export default function DashboardCards() {
                     }`}
                   >
                     {`${link.isButton ? "+" : ""} ${link.name}`}
-                  </a>
+                  </Link>
                 ))}
             </div>
           </div>

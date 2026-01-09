@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const cards = [
   {
     svg: (
@@ -106,14 +108,14 @@ export default function DashboardCardsLevel2() {
       <div className="flex flex-col bg-white rounded-xl gap-4 p-5">
         {/* Dashboard cards level 2 content goes here */}
         {cards.map((card, i) => (
-          <a
+          <Link
             key={i}
             href={card.link}
             className="flex items-center gap-4 py-2 px-4 rounded-lg bg-[#C0DFC1] hover:bg-[#A9D0A3] transition"
           >
             {card.svg}
             <span className="font-medium text-md">{card.name}</span>
-          </a>
+          </Link>
         ))}
       </div>
     </div>
